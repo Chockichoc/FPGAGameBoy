@@ -1,0 +1,111 @@
+module HVSync(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer);
+
+input pixelClk;
+output HSync;
+output VSync;
+output [3:0] R;
+output [3:0] G;
+output [3:0] B;
+input  [7:0] LY;
+reg [7:0] oldLY = 8'b0;
+input [159:0] LineBuffer;
+reg [9:0] HCount = 10'b0;
+reg [9:0] VCount = 10'b0;
+
+reg HSync = 1'b1;
+reg VSync = 1'b1;
+reg [3:0] R = 4'b0000;
+reg [3:0] G = 4'b0000;
+reg [3:0] B = 4'b0000;
+
+wire HCountMax = (HCount == 799); 
+wire VCountMax = (VCount == 523);
+
+reg [7:0] yBuffer;
+wire [159:0] bufferOutput;
+reg wr_buffer;
+
+videoRam ppuBuffer(pixelClk,
+	LineBuffer,
+	VCount,
+	LY,
+	wr_buffer,
+	bufferOutput);
+
+always @(posedge pixelClk) begin
+	
+	if(HCountMax) begin
+		HCount <= 0;
+
+	end
+	else begin
+		HCount <= HCount + 1;
+
+
+	end
+
+end
+
+always @(negedge HCountMax) begin
+	
+	if(VCountMax)
+		VCount <= 0;
+	else 
+		VCount <= VCount + 1;
+	
+		
+end
+
+always @(posedge pixelClk) begin
+
+	if(HCount >= 655 && HCount <= 750)
+		HSync <= 1'b0;
+	else
+		HSync <= 1'b1;
+	
+end
+
+always @(posedge HCount) begin
+
+	if(VCount >= 491 && VCount <= 492)
+		VSync <= 1'b0;
+	else
+		VSync <= 1'b1;
+      
+end
+
+reg  saveRoutineCounter = 1'b0;
+
+always @(posedge pixelClk) begin
+
+   if(LY != oldLY ||saveRoutineCounter > 3'd0) begin
+      if (saveRoutineCounter == 1'b0) begin
+         wr_buffer <= 1'b1;
+         saveRoutineCounter <= saveRoutineCounter + 1'b1;
+      end
+         
+      if (saveRoutineCounter == 1'b1) begin
+         wr_buffer <= 1'b0;  
+         saveRoutineCounter <= 1'b0;
+         oldLY <= LY;
+      end
+   end
+
+end
+
+always @(posedge pixelClk) begin
+
+	if(VCount < 144 && HCount < 160) begin
+		R <= ~{4{bufferOutput[HCount]}};
+		G <= ~{4{bufferOutput[HCount]}};
+		B <= ~{4{bufferOutput[HCount]}};
+	end
+	else begin
+		R <= 4'b0000;
+		G <= 4'b0000;
+		B <= 4'b0000;
+	end
+
+
+end
+endmodule
