@@ -31,7 +31,7 @@ module mmu(
 	output				wr_ram,
 	output				rd_ram,
 	
-	//Working & Stack RAM FF00-FF80
+	//Working & Stack RAM FF00-FF40
 	output 	[15:0] 	A_wsram,
 	output 	[7:0] 	Di_wsram,
 	input		[7:0]		Do_wsram,

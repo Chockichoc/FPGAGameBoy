@@ -21,7 +21,11 @@ module cpuInternalMMU (
 	input		[7:0]		Di_HRAM,
 	output				cs_HRAM,
 	output				wr_HRAM,
-	output				rd_HRAM
+	output				rd_HRAM,
+   
+   //Internal Register
+   input [7:0] IF,
+   input [7:0] IE
 
 );
 
@@ -34,10 +38,13 @@ assign wr_HRAM =  cs_HRAM ? wr_cpu : 1'b0;
 assign rd_MMU =   cs_MMU ? rd_cpu : 1'b0;
 assign rd_HRAM =  cs_HRAM ? rd_cpu : 1'b0;
 
-assign cs_MMU = A_cpu < 16'hFF80;
-assign cs_HRAM = A_cpu >= 16'hFF80;
+assign cs_MMU = A_cpu < 16'hFF80 && A_cpu != 16'hFF0F;
+assign cs_HRAM = A_cpu >= 16'hFF80 && A_cpu != 16'hFFFF;
 
-assign Do_cpu = cs_MMU ? Di_MMU : (cs_HRAM ? Di_HRAM : 8'b0);
+assign Do_cpu = cs_MMU ? Di_MMU : (cs_HRAM ? Di_HRAM :
+         A_cpu == 16'hFFFF ? IE :
+         A_cpu == 16'hFF0F ? IF :
+         8'b0);
 
 assign Do_MMU = cs_MMU ? Di_cpu : 8'b0;
 assign Do_HRAM = cs_HRAM ? Di_cpu : 8'b0;

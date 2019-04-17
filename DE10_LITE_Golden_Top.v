@@ -184,6 +184,8 @@ wire [7:0] Do_crd;
 wire rd_crd;
 wire wr_crd;
 
+wire IRQVBlank;
+
 //debug
 wire [7:0] A;
 wire [7:0] B;
@@ -260,7 +262,7 @@ ramtest programtest (
 	clock,
 	Di_crd,
 	rd_crd,
-	wr_crd,
+	1'b0,
 	Do_crd
 );
 	
@@ -346,6 +348,8 @@ ppu ppu0(
    wr_oam,
    rd_oam,
    
+   IRQVBlank,
+   
    clk,
    VGA_HS,
    VGA_VS,
@@ -372,6 +376,12 @@ cpu cpu0 (
    ,
    wr_highram,
    rd_highram,
+   ,
+   ,
+   ,
+   ,
+   IRQVBlank,
+
 	A,
 	B,
 	C,

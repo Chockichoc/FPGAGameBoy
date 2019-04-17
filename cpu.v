@@ -22,6 +22,12 @@ module cpu(
    output            wr_HRAM,
    output            rd_HRAM,
    
+   //To IRQ
+   input controllerIRQ,
+   input serialIOIRQ,
+   input timerIRQ,
+   input LCDCIRQ,
+   input VBlankIRQ,
 
 
    output reg  [7:0]    A = 8'h00,
@@ -59,8 +65,9 @@ module cpu(
    //reg [15:0]   SP = 16'hFFFE;
    
    //Interrupt things
-   reg   [7:0]    IF = 8'h0000;
-   reg   [7:0]    IE = 8'h0000;
+   reg   [3:0]    currentIRQIndex = 4'b0000; // 0 = VBlank, 1 = LCDC, 2 = Timer, 3 = Transfert, 4 = Controller;
+   reg   [7:0]    IF = 8'b00000000;
+   reg   [7:0]    IE = 8'b00000000;
    reg            IME = 1'b0;
    
    //Current Instruction
@@ -69,6 +76,7 @@ module cpu(
    reg   [2:0]    CurrentTCycle = 3'd0;
    reg   [7:0]    CB = 8'b0;
     
+
 
     
    cpuInternalMMU cpuInternalMMU0(
@@ -90,9 +98,58 @@ module cpu(
       Di_HRAM,
       cs_HRAM,
       wr_HRAM,
-      rd_HRAM
+      rd_HRAM,
+      
+      IF,
+      IE
       
    );
+   
+   
+   reg resetVBlank;
+
+
+   always @(posedge controllerIRQ) begin
+  
+      IF[4] <= 1'b1;
+   
+   end
+   
+   always @(posedge serialIOIRQ) begin
+   
+      IF[3] <= 1'b1;
+   end
+   
+   always @(posedge timerIRQ) begin
+   
+      IF[2] <= 1'b1;
+   
+   end
+   
+   always @(posedge LCDCIRQ) begin
+   
+      IF[1] <= 1'b1;
+   
+   end
+   
+   always @(posedge VBlankIRQ or posedge resetVBlank) begin
+   
+      if(resetVBlank)
+      IF[0] <= 1'b0;
+      else
+      IF[0] <= 1'b1;
+
+   
+   end
+   
+   always @(posedge pllClk) begin
+
+      if(wr) begin
+         case (A_cpu)
+            16'hFFFF:   IE   <= Do_cpu;   
+         endcase
+      end
+   end
    
    
    always @(posedge pllClk or posedge reset) begin
@@ -113,6 +170,9 @@ module cpu(
       SP <= 16'hFFFE;
       CurrentMCycle <= 3'd0;
       CurrentTCycle <= 3'd0;
+      
+      currentIRQIndex = 4'b0000; // 0 = VBlank, 1 = LCDC, 2 = Timer, 3 = Transfert, 4 = Controller;
+      IME = 1'b0;
    
    end
    else begin 
@@ -120,7 +180,7 @@ module cpu(
             ////////////
             //op fetch//
             ////////////
-      if(CurrentMCycle == 0 && CurrentTCycle < 2'd3)  begin
+      if(CurrentMCycle == 0 && CurrentTCycle < 2'd3 && (IME==1'b0 || (IF & IE) == 8'b0) && currentIRQIndex[3] == 1'b0)  begin
          case (CurrentTCycle)
             3'd0 :   begin A_cpu <= PC; 
                            rd <= 1'b1; 
@@ -133,7 +193,73 @@ module cpu(
          endcase
       
       end
-      else begin
+      else if(CurrentMCycle == 3'd0 && CurrentTCycle < 2'd3 && (IME == 1'b1) && ((IF & IE) != 8'b0) && (currentIRQIndex[3] == 1'b0))  begin
+         currentIRQIndex[3] <= 1'b1;
+         IME <= 1'b0;
+         
+         CurrentTCycle <= 3'd0;
+         CurrentMCycle <= 3'd0;
+         if (IF[0] == 1'b1)
+            currentIRQIndex[2:0] <= 3'b000;
+         else if (IF[1] == 1'b1)
+            currentIRQIndex[2:0] <= 3'b001;
+         else if (IF[2] == 1'b1)
+            currentIRQIndex[2:0] <= 3'b010;
+         else if (IF[3] == 1'b1)
+            currentIRQIndex[2:0] <= 3'b011;
+         else if (IF[4] == 1'b1)
+            currentIRQIndex[2:0] <= 3'b100;
+      end
+      else if(currentIRQIndex[3] == 1'b1) begin
+         
+         case(CurrentMCycle)
+                     3'd0  :  case (CurrentTCycle)
+                                 3'd0  :  begin    A_cpu <= SP - 1'b1;
+                                                   Do_cpu <= PC[15:8];
+                                                   resetVBlank <= 1'b1;
+                                                   CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd2  :  begin    wr <= 1'b1;
+                                                   CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd3  :  begin    wr <= 1'b0;
+                                                   CurrentTCycle <= 3'd0;
+                                                   CurrentMCycle <= CurrentMCycle + 3'd1;       end
+                              endcase
+                     3'd1  :  case (CurrentTCycle)
+                                 3'd0  :  begin    A_cpu <= SP - 2'd2;
+                                                   Do_cpu <= PC[7:0];
+                                                   resetVBlank <= 1'b0;
+                                                   CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd2  :  begin    wr <= 1'b1;
+                                                   CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd3  :  begin    wr <= 1'b0;
+                                                   CurrentTCycle <= 3'd0;
+                                                   CurrentMCycle <= CurrentMCycle + 3'd1;       end
+                              endcase
+                     3'd2  :  case (CurrentTCycle)
+                                 3'd0  :  begin    SP <= SP - 2'd2;
+                                                   PC[15:8] <= 8'b0;
+                                                   case(currentIRQIndex[2:0])
+                                                      3'b000 : PC[7:0] <= 8'h40; 
+                                                      3'b001 : PC[7:0] <= 8'h48;
+                                                      3'b010 : PC[7:0] <= 8'h50;
+                                                      3'b011 : PC[7:0] <= 8'h58;
+                                                      3'b100 : PC[7:0] <= 8'h60;
+
+                                                   endcase
+                                                   CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd2  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
+                                 3'd3  :  begin    currentIRQIndex <= 4'b0000;
+                                                   CurrentTCycle <= 3'd0;
+                                                   CurrentMCycle <= 3'd0;       end
+                              endcase
+                  endcase
+         
+      end
+      else
+         begin
          
          case (CI)
          

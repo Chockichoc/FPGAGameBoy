@@ -20,6 +20,8 @@ module ppu (
    output                  wr_oam,
    output                  rd_oam,
    
+   output reg IRQ,
+   
    input pixelClk,
    output  HSync,
    output  VSync,
@@ -180,23 +182,6 @@ always @(posedge clock) begin
          16'hFF4B:   WX          <= Di_mmu;
       endcase
    end
-//   else if(cs_mmu && rd_mmu) begin
-//      case (A_mmu)
-//         16'hFF40:   Do_mmu <= LCDC;
-//         16'hFF41:   Do_mmu <= STAT;
-//         16'hFF42:   Do_mmu <= SCY;
-//         16'hFF43:   Do_mmu <= SCX;
-//         16'hFF44:   Do_mmu <= LY;
-//         16'hFF45:   Do_mmu <= LYC;
-//         16'hFF46:   Do_mmu <= DMA;
-//         16'hFF47:   Do_mmu <= BGP;
-//         16'hFF48:   Do_mmu <= OBP0;
-//         16'hFF49:   Do_mmu <= OBP1;
-//         16'hFF4A:   Do_mmu <= WY;
-//         16'hFF4B:   Do_mmu <= WX;
-//      endcase
-//   end
-
 end
 
 reg [4:0] renderCount = 5'b0;
@@ -206,6 +191,7 @@ reg [4:0] xBGTileIndex = 5'b0;
 always @(posedge clock) begin
    if (LCDC[7]) begin
    if(LY < 8'd144) begin
+      IRQ <= 1'b0;
       if(XCount < 9'd80 ) begin
          STAT[1:0] <= 2'd2;
       
@@ -257,7 +243,7 @@ always @(posedge clock) begin
    end
    else begin
          STAT[1:0] <= 2'd1;
-         
+         IRQ <= 1'b1;
          
       
    end
