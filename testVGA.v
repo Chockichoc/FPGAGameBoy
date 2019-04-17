@@ -19,7 +19,7 @@ reg [3:0] G = 4'b0000;
 reg [3:0] B = 4'b0000;
 
 wire HCountMax = (HCount == 799); 
-wire VCountMax = (VCount == 523);
+wire VCountMax = (VCount == 524);
 
 reg [7:0] yBuffer;
 wire [159:0] bufferOutput;
@@ -67,7 +67,7 @@ end
 
 always @(posedge HCount) begin
 
-	if(VCount >= 491 && VCount <= 492)
+	if(VCount >= 489 && VCount <= 491)
 		VSync <= 1'b0;
 	else
 		VSync <= 1'b1;
