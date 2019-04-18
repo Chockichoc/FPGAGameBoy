@@ -166,6 +166,12 @@ wire [7:0] Do_oam;
 wire rd_oam;
 wire wr_oam;
 
+wire [15:0] A_oamram;
+wire [7:0] Di_oamram;
+wire [7:0] Do_oamram;
+wire rd_oamram;
+wire wr_oamram;
+
 wire [15:0] A_wsram;
 wire [7:0] Di_wsram;
 wire [7:0] Do_wsram;
@@ -229,12 +235,12 @@ vram vram0 (
 );
 	
  oamram oamram0 (
-	A_oam,
+	A_oamram,
 	clock,
-	Di_oam,
-	rd_oam,
-	wr_oam,
-	Do_oam
+	Di_oamram,
+	rd_oamram,
+	wr_oamram,
+	Do_oamram
 );
 	
 wsram wsram(
@@ -323,6 +329,29 @@ mmu mmu (
 	wr_wsram,
 	rd_wsram
 	
+);
+
+oam oam0(
+   1'b0,
+   
+   A_oam,
+   Di_oam,
+   Do_oam,
+   wr_oam,
+   rd_oam,
+   
+   ,
+   ,
+   ,
+   ,
+   ,
+   
+   A_oamram,
+   Do_oamram,
+   Di_oamram,
+   wr_oamram,
+   rd_oamram
+   
 );
 
 ppu ppu0(

@@ -21,6 +21,7 @@ module ppu (
    output                  rd_oam,
    
    output reg IRQ,
+   output [7:0] dmaAdress,
    
    input pixelClk,
    output  HSync,
@@ -30,6 +31,8 @@ module ppu (
    output  [3:0] B
 
 );
+
+   assign dmaAdress = DMA;
 
    HVSync HVSync0(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer0, LineBuffer1, LineBuffer2, LineBuffer3);
 
