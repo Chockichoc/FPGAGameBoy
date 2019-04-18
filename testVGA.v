@@ -1,4 +1,4 @@
-module HVSync(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer);
+module HVSync(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer0, LineBuffer1, LineBuffer2, LineBuffer3);
 
 input pixelClk;
 output HSync;
@@ -8,7 +8,11 @@ output [3:0] G;
 output [3:0] B;
 input  [7:0] LY;
 reg [7:0] oldLY = 8'b0;
-input [159:0] LineBuffer;
+input [159:0] LineBuffer0;
+input [159:0] LineBuffer1;
+input [159:0] LineBuffer2;
+input [159:0] LineBuffer3;
+
 reg [9:0] HCount = 10'b0;
 reg [9:0] VCount = 10'b0;
 
@@ -21,16 +25,40 @@ reg [3:0] B = 4'b0000;
 wire HCountMax = (HCount == 799); 
 wire VCountMax = (VCount == 524);
 
-reg [7:0] yBuffer;
-wire [159:0] bufferOutput;
+wire [159:0] bufferOutput0;
+wire [159:0] bufferOutput1;
+wire [159:0] bufferOutput2;
+wire [159:0] bufferOutput3;
+
 reg wr_buffer;
 
-videoRam ppuBuffer(pixelClk,
-	LineBuffer,
+videoRam ppuBuffer0(pixelClk,
+	LineBuffer0,
 	VCount,
 	LY,
 	wr_buffer,
-	bufferOutput);
+	bufferOutput0);
+
+videoRam ppuBuffer1(pixelClk,
+	LineBuffer1,
+	VCount,
+	LY,
+	wr_buffer,
+	bufferOutput1);
+
+videoRam ppuBuffer2(pixelClk,
+	LineBuffer2,
+	VCount,
+	LY,
+	wr_buffer,
+	bufferOutput2);
+   
+videoRam ppuBuffer3(pixelClk,
+	LineBuffer3,
+	VCount,
+	LY,
+	wr_buffer,
+	bufferOutput3);
 
 always @(posedge pixelClk) begin
 	
@@ -95,10 +123,11 @@ end
 
 always @(posedge pixelClk) begin
 
-	if(VCount < 144 && HCount < 160) begin
-		R <= ~{4{bufferOutput[HCount]}};
-		G <= ~{4{bufferOutput[HCount]}};
-		B <= ~{4{bufferOutput[HCount]}};
+    if(VCount < 144 && HCount < 160) begin
+      R <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
+      G <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
+      B <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
+
 	end
 	else begin
 		R <= 4'b0000;

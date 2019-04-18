@@ -31,14 +31,19 @@ module ppu (
 
 );
 
-   HVSync HVSync0(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer);
+   HVSync HVSync0(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer0, LineBuffer1, LineBuffer2, LineBuffer3);
 
    //wire [9:0] HCount;
    //wire [9:0] VCount;
 
    //assign pixColor = Buffer[HCount][VCount];
    
-   reg [159:0] LineBuffer;
+   // 1 Buffer per bit
+   reg [159:0] LineBuffer0;
+   reg [159:0] LineBuffer1;
+   reg [159:0] LineBuffer2;
+   reg [159:0] LineBuffer3;
+
    reg [8:0]  XCount = 9'b0;  
 
    reg   [15:0]   A_ppu    = 16'h0000;
@@ -186,7 +191,8 @@ end
 
 reg [4:0] renderCount = 5'b0;
 reg [4:0] xBGTileIndex = 5'b0;
-
+reg [7:0] currentTileAddress = 8'b0;
+integer i;
 
 always @(posedge clock) begin
    if (LCDC[7]) begin
@@ -210,24 +216,37 @@ always @(posedge clock) begin
                   5'd1 : begin   renderCount <= renderCount + 1'b1; end
             
                   5'd2 : begin   A_ppu <= {4'b1000, Di_ppu, LY[2:0], 1'b0};
+                                 currentTileAddress <= Di_ppu;
                                  renderCount <= renderCount + 1'b1; end
                                  
                   5'd3 : begin   renderCount <= renderCount + 1'b1; end
+                                  
+                  5'd4 : begin   for(i = 0; i < 8; i = i + 1) begin
+                                   
+                                   LineBuffer3[8 * xBGTileIndex + i] <= ~Di_ppu[7-i]; 
+                                   LineBuffer1[8 * xBGTileIndex + i] <= ~Di_ppu[7-i]; 
+
+                                 end
+
+                                 renderCount <= renderCount + 1'b1; end
+                   
+                  5'd5 : begin   A_ppu <= {4'b1000, currentTileAddress, LY[2:0], 1'b1};
+                                 renderCount <= renderCount + 1'b1; end
+                  
+                  5'd6 : begin   renderCount <= renderCount + 1'b1; end
                   
                   
-                  5'd4 : begin   rd_ppu <= 1'b0;
-                                 LineBuffer[8 * xBGTileIndex + 0] <= Di_ppu[7]; 
-                                 LineBuffer[8 * xBGTileIndex + 1] <= Di_ppu[6];
-                                 LineBuffer[8 * xBGTileIndex + 2] <= Di_ppu[5];
-                                 LineBuffer[8 * xBGTileIndex + 3] <= Di_ppu[4];
-                                 LineBuffer[8 * xBGTileIndex + 4] <= Di_ppu[3];
-                                 LineBuffer[8 * xBGTileIndex + 5] <= Di_ppu[2];
-                                 LineBuffer[8 * xBGTileIndex + 6] <= Di_ppu[1];
-                                 LineBuffer[8 * xBGTileIndex + 7] <= Di_ppu[0];
+                  5'd7 : begin   rd_ppu <= 1'b0;
+                                 for(i = 0; i < 8; i = i + 1) begin
+                                   
+                                   LineBuffer0[8 * xBGTileIndex + i] <= ~Di_ppu[7-i]; 
+                                   LineBuffer2[8 * xBGTileIndex + i] <= ~Di_ppu[7-i]; 
+
+                                 end
+
                                  xBGTileIndex <= xBGTileIndex + 1'b1;
                                  renderCount <= 5'd0; end
-                    
-                                 
+                            
                endcase
            
          end
