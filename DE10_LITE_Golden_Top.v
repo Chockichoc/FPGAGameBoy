@@ -132,7 +132,7 @@ module DE10_LITE_Golden_Top(
 //  REG/WIRE declarations
 //=======================================================
 wire clock;
-pll pll0 (MAX10_CLK1_50, clock);
+pll pll0 (MAX10_CLK1_50, clock, clk);
 //assign clock = KEY[1];
 
 wire [15:0] A_cpu;
@@ -219,8 +219,7 @@ wire [7:0] L;
 wire [15:0] PC;
 wire [15:0] SP;
 
-wire clk;
-pixelclk pixelclk0(MAX10_CLK1_50, clk);
+
 
 B2HConv conv5((SW[0] && ~SW[1] && ~SW[2] && ~SW[3] && ~SW[4] && ~SW[5]) ? F[3:0] : (~SW[0] && SW[1] && ~SW[2] && ~SW[3] && ~SW[4] && ~SW[5]) ? C[3:0] : (~SW[0] && ~SW[1] && SW[2] && ~SW[3] && ~SW[4] && ~SW[5]) ? E[3:0] : (~SW[0] && ~SW[1] && ~SW[2] && SW[3] && ~SW[4] && ~SW[5]) ? L[3:0] : (~SW[0] && ~SW[1] && ~SW[2] && ~SW[3] && SW[4] && ~SW[5]) ? PC[3:0]   : (~SW[0] && ~SW[1] && ~SW[2] && ~SW[3] && ~SW[4] && SW[5]) ? SP[3:0] : 4'b0000, HEX0);
 B2HConv conv4((SW[0] && ~SW[1] && ~SW[2] && ~SW[3] && ~SW[4] && ~SW[5]) ? F[7:4] : (~SW[0] && SW[1] && ~SW[2] && ~SW[3] && ~SW[4] && ~SW[5]) ? C[7:4] : (~SW[0] && ~SW[1] && SW[2] && ~SW[3] && ~SW[4] && ~SW[5]) ? E[7:4] : (~SW[0] && ~SW[1] && ~SW[2] && SW[3] && ~SW[4] && ~SW[5]) ? L[7:4] : (~SW[0] && ~SW[1] && ~SW[2] && ~SW[3] && SW[4] && ~SW[5]) ? PC[7:4]   : (~SW[0] && ~SW[1] && ~SW[2] && ~SW[3] && ~SW[4] && SW[5]) ? SP[7:4] : 4'b0000, HEX1);
