@@ -190,6 +190,9 @@ always @(posedge clock) begin
          16'hFF4B:   WX          <= Di_mmu;
       endcase
    end
+   else
+     DMA <= 8'b0;
+
 end
 
 reg [4:0] renderCount = 5'b0;

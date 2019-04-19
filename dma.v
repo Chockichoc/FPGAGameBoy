@@ -26,8 +26,8 @@ module dma(
 );
    reg   [2:0]    CurrentTCycle = 3'd0;
    reg   [7:0]    DmaCounter = 8'b0;
+   reg   [7:0]    CurrentDMAAdress = 8'b0;
 
-   reg [7:0] oldDmaAdress = 8'b0;
    reg [1:0] DmaState = 2'b00; //00 wait for dma transfert, 01 init dma transfert, 10 dma transfert in progress
 
    reg [15:0] A_dma = 16'b0;
@@ -47,14 +47,14 @@ module dma(
 
    always @(posedge clock) begin
 
-      if(oldDmaAdress != dmaAdress) begin
-         oldDmaAdress <= dmaAdress;
+      if(dmaAdress != 8'b0) begin
          DmaState <= 2'b01;
          A_dma <= {dmaAdress, 8'b0};
          rd_dma <= 1'b1;
          DmaCounter <= 8'b0;
          CurrentTCycle <= 3'd1;
-         A_oam <= 16'hFF00;
+         A_oam <= 16'h0000;
+         CurrentDMAAdress <= dmaAdress;
          
       end
       else
@@ -83,13 +83,13 @@ module dma(
                   end
             3'd1: begin
                      wr_oam <= 1'b1;
-                     rd_dma <= 1'b0;
+                     //rd_dma <= 1'b0;
                      CurrentTCycle <= CurrentTCycle + 3'd1;
                   end
             3'd2: begin
                      wr_oam <= 1'b0;
-                     A_dma <=  {oldDmaAdress, DmaCounter + 1'b1};
-                     rd_dma <= 1'b1;
+                     A_dma <=  {CurrentDMAAdress, DmaCounter + 1'b1};
+                     //rd_dma <= 1'b1;
                      CurrentTCycle <= CurrentTCycle + 3'd1;
                   end
             3'd3: begin
@@ -99,9 +99,12 @@ module dma(
                         begin
                            DmaCounter <= 8'd0;
                            DmaState <= 2'b00;
+                           rd_dma <= 1'b0;
+                           CurrentDMAAdress <= 8'b0;
+                           
                         end
                         else begin
-                           A_oam <= 16'hFE00 + {8'b0, DmaCounter + 1'b1};
+                           A_oam <= 16'h0000 + {8'b0, DmaCounter + 1'b1};
                            DmaCounter <= DmaCounter + 1'b1;
                         end
                   end

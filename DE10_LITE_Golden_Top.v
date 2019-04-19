@@ -154,6 +154,13 @@ wire cs_ppu;
 wire rd_ppu;
 wire wr_ppu;
 
+wire [15:0] A_mmu;
+wire [7:0] Di_mmu;
+wire [7:0] Do_mmu;
+wire cs_mmu;
+wire rd_mmu;
+wire wr_mmu;
+
 wire [15:0] A_vram;
 wire [7:0] Di_vram;
 wire [7:0] Do_vram;
@@ -165,6 +172,12 @@ wire [7:0] Di_oam;
 wire [7:0] Do_oam;
 wire rd_oam;
 wire wr_oam;
+
+wire [15:0] A_dma;
+wire [7:0] Di_dma;
+wire [7:0] Do_dma;
+wire rd_dma;
+wire wr_dma;
 
 wire [15:0] A_oamram;
 wire [7:0] Di_oamram;
@@ -191,6 +204,8 @@ wire rd_crd;
 wire wr_crd;
 
 wire IRQVBlank;
+wire [7:0] dmaAdress;
+wire dmaEnableSignal;
 
 //debug
 wire [7:0] A;
@@ -275,11 +290,11 @@ ramtest programtest (
 mmu mmu (
 
 	//Cpu 0000-FFFF
-	A_cpu,
-	Di_cpu,
-	Do_cpu,
-	wr_cpu,
-	rd_cpu,
+	A_mmu,
+	Di_mmu,
+	Do_mmu,
+	wr_mmu,
+	rd_mmu,
 	
 	//Cartridge 0000-7FFF & A000-BFFF
 	A_crd,
@@ -296,22 +311,6 @@ mmu mmu (
 	cs_ppu,
 	wr_ppu,
 	rd_ppu,
-
-//	//VRAM 8000-9FFF
-//	A_vram,
-//	Di_vram,
-//	Do_vram,
-//	,
-//	wr_vram,
-//	rd_vram,
-//	
-//	//OAM FE00-FE9F
-//	A_oamram,
-//	Di_oamram,
-//	Do_oamram,
-//	,
-//	wr_oamram,
-//	rd_oamram,
 	
 	//RAM C000-DFFF
 	A_ram,
@@ -332,7 +331,7 @@ mmu mmu (
 );
 
 oam oam0(
-   1'b0,
+   dmaEnableSignal,
    
    A_oam,
    Di_oam,
@@ -340,11 +339,11 @@ oam oam0(
    wr_oam,
    rd_oam,
    
-   ,
-   ,
-   ,
-   ,
-   ,
+   A_dma,
+   Di_dma,
+   Do_dma,
+   wr_dma,
+   rd_dma,
    
    A_oamram,
    Do_oamram,
@@ -352,6 +351,33 @@ oam oam0(
    wr_oamram,
    rd_oamram
    
+);
+
+dma dma0(
+
+   dmaAdress,
+   clock,
+   
+   dmaEnableSignal,
+   
+   A_cpu,
+   Do_cpu,
+   Di_cpu,
+   wr_cpu,
+   rd_cpu,
+   
+   A_dma,
+   Di_dma,
+   Do_dma,
+   wr_dma,
+   rd_dma,
+   
+   A_mmu,
+   Do_mmu,
+   Di_mmu,
+   wr_mmu,
+   rd_mmu
+
 );
 
 ppu ppu0(
@@ -378,6 +404,7 @@ ppu ppu0(
    rd_oam,
    
    IRQVBlank,
+   dmaAdress,
    
    clk,
    VGA_HS,
