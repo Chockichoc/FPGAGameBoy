@@ -16,11 +16,11 @@ input [159:0] LineBuffer3;
 reg [9:0] HCount = 10'b0;
 reg [9:0] VCount = 10'b0;
 
-reg HSync = 1'b1;
-reg VSync = 1'b1;
-reg [3:0] R = 4'b0000;
-reg [3:0] G = 4'b0000;
-reg [3:0] B = 4'b0000;
+//wire HSync = 1'b1;
+//wire VSync = 1'b1;
+//reg [3:0] R = 4'b0000;
+//reg [3:0] G = 4'b0000;
+//reg [3:0] B = 4'b0000;
 
 wire HCountMax = (HCount == 799); 
 wire VCountMax = (VCount == 524);
@@ -63,11 +63,11 @@ videoRam ppuBuffer3(pixelClk,
 always @(posedge pixelClk) begin
 	
 	if(HCountMax) begin
-		HCount <= 0;
+		HCount <= 10'd0;
 
 	end
 	else begin
-		HCount <= HCount + 1;
+		HCount <= HCount + 1'b1;
 
 
 	end
@@ -77,30 +77,34 @@ end
 always @(negedge HCountMax) begin
 	
 	if(VCountMax)
-		VCount <= 0;
+		VCount <= 10'd0;
 	else 
-		VCount <= VCount + 1;
+		VCount <= VCount + 1'b1;
 	
 		
 end
 
-always @(posedge pixelClk) begin
+assign HSync = (HCount >= 10'd655 && HCount <= 10'd750) ? 1'b0 : 1'b1;
+assign VSync = (VCount >= 10'd489 && VCount <= 10'd491) ? 1'b0 : 1'b1;
 
-	if(HCount >= 655 && HCount <= 750)
-		HSync <= 1'b0;
-	else
-		HSync <= 1'b1;
-	
-end
 
-always @(posedge HCount) begin
-
-	if(VCount >= 489 && VCount <= 491)
-		VSync <= 1'b0;
-	else
-		VSync <= 1'b1;
-      
-end
+//always @(posedge pixelClk) begin
+//
+//	if(HCount >= 10'd655 && HCount <= 10'd750)
+//		HSync <= 1'b0;
+//	else
+//		HSync <= 1'b1;
+//	
+//end
+//
+//always @(posedge HCount[0]) begin
+//
+//	if(VCount >= 10'd489 && VCount <= 10'd491)
+//		VSync <= 1'b0;
+//	else
+//		VSync <= 1'b1;
+//      
+//end
 
 reg  saveRoutineCounter = 1'b0;
 
@@ -121,20 +125,26 @@ always @(posedge pixelClk) begin
 
 end
 
-always @(posedge pixelClk) begin
-
-    if(VCount < 144 && HCount < 160) begin
-      R <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
-      G <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
-      B <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
-
-	end
-	else begin
-		R <= 4'b0000;
-		G <= 4'b0000;
-		B <= 4'b0000;
-	end
+assign R = (VCount < 10'd144 && HCount < 10'd160) ? {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]} : 4'b0000;
+assign G = (VCount < 10'd144 && HCount < 10'd160) ? {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]} : 4'b0000;
+assign B = (VCount < 10'd144 && HCount < 10'd160) ? {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]} : 4'b0000;
 
 
-end
+
+//always @(posedge pixelClk) begin
+//
+//    if(VCount < 10'd144 && HCount < 10'd160) begin
+//      R <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
+//      G <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
+//      B <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
+//
+//	end
+//	else begin
+//		R <= 4'b0000;
+//		G <= 4'b0000;
+//		B <= 4'b0000;
+//	end
+//
+//
+//end
 endmodule
