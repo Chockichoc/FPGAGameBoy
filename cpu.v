@@ -38,7 +38,7 @@ module cpu(
    output reg  [7:0]    F = 8'h00,
    output reg  [7:0]    H = 8'h00,
    output reg  [7:0]    L = 8'h00,
-   output reg  [15:0]   PC = 16'h0000,
+   output reg  [15:0]   PC = 16'h0100,
    output reg  [15:0]   SP = 16'hFFFE
 
 );
@@ -76,7 +76,8 @@ module cpu(
    reg   [2:0]    CurrentTCycle = 3'd0;
    reg   [7:0]    CB = 8'b0;
     
-
+   //Halt mode
+   reg HALT = 1'b0;
 
     
    cpuInternalMMU cpuInternalMMU0(
@@ -166,7 +167,7 @@ module cpu(
       H <= 8'h00;
       L <= 8'h00;
       
-      PC <= 16'h0000;
+      PC <= 16'h0100;
       SP <= 16'hFFFE;
       CurrentMCycle <= 3'd0;
       CurrentTCycle <= 3'd0;
@@ -175,8 +176,10 @@ module cpu(
       IME = 1'b0;
    
    end
-   else begin 
-   
+   else if(HALT == 1'b0 || ((IF & IE) != 8'b0))  begin 
+      
+      HALT <= 1'b0;
+      
             ////////////
             //op fetch//
             ////////////
@@ -3640,6 +3643,70 @@ module cpu(
                               endcase
                   endcase
                end 
+               
+            ///////      
+            //DDA//
+            ///////
+           
+            8'b00100111 :
+            
+               begin
+                  case(CurrentMCycle)
+                     3'd0  :  case (CurrentTCycle)
+                                 3'd3  :  begin    PC <= PC + 1'b1;
+                                                   CurrentTCycle <= 3'd0;
+                                                   CurrentMCycle <= 3'd0;
+                                                   case(F[6])
+                                                      1'b0:
+                                                              if(F[4] == 1'b0 && A[7:4] <= 4'h9 && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
+                                                            A <= A + 8'h00;
+                                                            F[4] <= 1'b0; end
+                                                         else if(F[4] == 1'b0 && A[7:4] <= 4'h8 && F[5] == 1'b0 && A[3:0] >= 4'hA) begin
+                                                            A <= A + 8'h06;
+                                                            F[4] <= 1'b0; end
+                                                         else if(F[4] == 1'b0 && A[7:4] <= 4'h9 && F[5] == 1'b1 && A[3:0] <= 4'h3) begin
+                                                            A <= A + 8'h06;
+                                                            F[4] <= 1'b0; end
+                                                         else if(F[4] == 1'b0 && A[7:4] >= 4'hA && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
+                                                            A <= A + 8'h60;
+                                                            F[4] <= 1'b1; end
+                                                         else if(F[4] == 1'b0 && A[7:4] >= 4'h9 && F[5] == 1'b0 && A[3:0] >= 4'hA) begin
+                                                            A <= A + 8'h66;
+                                                            F[4] <= 1'b1; end
+                                                         else if(F[4] == 1'b0 && A[7:4] >= 4'hA && F[5] == 1'b1 && A[3:0] <= 4'h3) begin
+                                                            A <= A + 8'h66;
+                                                            F[4] <= 1'b1; end
+                                                         else if(F[4] == 1'b1 && A[7:4] <= 4'h2 && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
+                                                            A <= A + 8'h60;
+                                                            F[4] <= 1'b1; end
+                                                         else if(F[4] == 1'b1 && A[7:4] <= 4'h2 && F[5] == 1'b0 && A[3:0] >= 4'hA) begin
+                                                            A <= A + 8'h66;
+                                                            F[4] <= 1'b1; end
+                                                         else if(F[4] == 1'b1 && A[7:4] <= 4'h3 && F[5] == 1'b1 && A[3:0] <= 4'h3) begin
+                                                            A <= A + 8'h66;
+                                                            F[4] <= 1'b1; end
+
+
+                                                      1'b1:
+                                                              if(F[4] == 1'b0 && A[7:4] <= 4'h9 && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
+                                                            A <= A + 8'h00;
+                                                            F[4] <= 1'b0; end
+                                                         else if(F[4] == 1'b0 && A[7:4] <= 4'h8 && F[5] == 1'b1 && A[3:0] >= 4'h6) begin
+                                                            A <= A + 8'hFA;
+                                                            F[4] <= 1'b0; end
+                                                         else if(F[4] == 1'b1 && A[7:4] >= 4'h7 && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
+                                                            A <= A + 8'hA0;
+                                                            F[4] <= 1'b1; end
+                                                         else if(F[4] == 1'b1 && A[7:4] >= 4'h6 && F[5] == 1'b1 && A[3:0] >= 4'h6) begin
+                                                            A <= A + 8'h9A;
+                                                            F[4] <= 1'b1; end
+                                                   endcase
+                                                   
+                                                   
+                                          end
+                              endcase     
+                  endcase
+               end  
          
       
             ///////      
@@ -3749,6 +3816,23 @@ module cpu(
                               endcase     
                   endcase
                end   
+            
+            ////////      
+            //HALT//
+            ////////
+           
+            8'b01110110 :
+            
+               begin
+                  case(CurrentMCycle)
+                     3'd0  :  case (CurrentTCycle)
+                                 3'd3  :  begin    PC <= PC + 1'b1;
+                                                   HALT <= 1'b1;
+                                                   CurrentTCycle <= 3'd0;
+                                                   CurrentMCycle <= 3'd0;       end
+                              endcase     
+                  endcase
+               end    
                
    /////////////////////////              
          endcase
