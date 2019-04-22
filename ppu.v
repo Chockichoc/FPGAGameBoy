@@ -8,17 +8,17 @@ module ppu (
    input                   wr_mmu,
    input                   rd_mmu,
    
-   output         [15:0]   A_vram,
-   output         [7:0]    Do_vram,
-   input          [7:0]    Di_vram,
-   output                  wr_vram,
-   output                  rd_vram,
+   output         [15:0]   A_vramio,
+   output         [7:0]    Do_vramio,
+   input          [7:0]    Di_vramio,
+   output                  wr_vramio,
+   output                  rd_vramio,
    
-   output         [15:0]   A_oam,
-   output         [7:0]    Do_oam,
-   input          [7:0]    Di_oam,
-   output                  wr_oam,
-   output                  rd_oam,
+   output         [15:0]   A_oamio,
+   output         [7:0]    Do_oamio,
+   input          [7:0]    Di_oamio,
+   output                  wr_oamio,
+   output                  rd_oamio,
    
    output reg IRQ,
    output [7:0] dmaAdress,
@@ -49,12 +49,17 @@ module ppu (
 
    reg [8:0]  XCount = 9'b0;  
 
-   reg   [15:0]   A_ppu    = 16'h0000;
-   reg   [7:0]    Do_ppu   = 8'b0;
-   wire  [7:0]    Di_ppu;
-   reg            wr_ppu   = 1'b0;
-   reg            rd_ppu   = 1'b0;
+   reg   [15:0]   A_vram    = 16'h0000;
+   reg   [7:0]    Do_vram   = 8'b0;
+   wire  [7:0]    Di_vram;
+   reg            wr_vram   = 1'b0;
+   reg            rd_vram   = 1'b0;
    
+   reg   [15:0]   A_oam    = 16'h0000;
+   reg   [7:0]    Do_oam   = 8'b0;
+   wire  [7:0]    Di_oam;
+   reg            wr_oam   = 1'b0;
+   reg            rd_oam   = 1'b0; 
    
    reg   [7:0]    LCDC  = 8'b0;
    reg   [7:0]    STAT  = 8'b0;
@@ -70,33 +75,33 @@ module ppu (
    reg   [7:0]    WX    = 8'b0;
    
    
-   wire  [15:0]   A_mmu0ToVram;
-   wire  [7:0]    Do_mmu0ToVram;
-   wire  [7:0]    Di_mmu0ToVram;
-   wire           cs_mmu0ToVram;
-   wire           wr_mmu0ToVram;
-   wire           rd_mmu0ToVram;
+   wire  [15:0]   A_mmuToVram;
+   wire  [7:0]    Do_mmuToVram;
+   wire  [7:0]    Di_mmuToVram;
+   wire           cs_mmuToVram;
+   wire           wr_mmuToVram;
+   wire           rd_mmuToVram;
    
-   wire  [15:0]   A_mmu0ToOam;
-   wire  [7:0]    Do_mmu0ToOam;
-   wire  [7:0]    Di_mmu0ToOam;
-   wire           cs_mmu0ToOam;
-   wire           wr_mmu0ToOam;
-   wire           rd_mmu0ToOam;
+   wire  [15:0]   A_mmuToOam;
+   wire  [7:0]    Do_mmuToOam;
+   wire  [7:0]    Di_mmuToOam;
+   wire           cs_mmuToOam;
+   wire           wr_mmuToOam;
+   wire           rd_mmuToOam;
    
-   wire  [15:0]   A_mmu1ToVram;
-   wire  [7:0]    Do_mmu1ToVram;
-   wire  [7:0]    Di_mmu1ToVram;
-   wire           cs_mmu1ToVram;
-   wire           wr_mmu1ToVram;
-   wire           rd_mmu1ToVram;
-   
-   wire  [15:0]   A_mmu1ToOam;
-   wire  [7:0]    Do_mmu1ToOam;
-   wire  [7:0]    Di_mmu1ToOam;
-   wire           cs_mmu1ToOam;
-   wire           wr_mmu1ToOam;
-   wire           rd_mmu1ToOam;
+//   wire  [15:0]   A_mmu1ToVram;
+//   wire  [7:0]    Do_mmu1ToVram;
+//   wire  [7:0]    Di_mmu1ToVram;
+//   wire           cs_mmu1ToVram;
+//   wire           wr_mmu1ToVram;
+//   wire           rd_mmu1ToVram;
+//   
+//   wire  [15:0]   A_mmu1ToOam;
+//   wire  [7:0]    Do_mmu1ToOam;
+//   wire  [7:0]    Di_mmu1ToOam;
+//   wire           cs_mmu1ToOam;
+//   wire           wr_mmu1ToOam;
+//   wire           rd_mmu1ToOam;
 
    ppuInternalMMU ppuInternalMMU0 (
       A_mmu,
@@ -105,19 +110,19 @@ module ppu (
       wr_mmu,
       rd_mmu,
       
-      A_mmu0ToVram,
-      Do_mmu0ToVram,
-      Di_mmu0ToVram,
-      cs_mmu0ToVram,
-      wr_mmu0ToVram,
-      rd_mmu0ToVram,
+      A_mmuToVram,
+      Do_mmuToVram,
+      Di_mmuToVram,
+      cs_mmuToVram,
+      wr_mmuToVram,
+      rd_mmuToVram,
       
-      A_mmu0ToOam,
-      Do_mmu0ToOam,
-      Di_mmu0ToOam,
-      cs_mmu0ToOam,
-      wr_mmu0ToOam,
-      rd_mmu0ToOam,
+      A_mmuToOam,
+      Do_mmuToOam,
+      Di_mmuToOam,
+      cs_mmuToOam,
+      wr_mmuToOam,
+      rd_mmuToOam,
        LCDC,
        STAT,
        SCY ,
@@ -132,44 +137,44 @@ module ppu (
        WX    
    );
    
-   ppuInternalMMU ppuInternalMMU1 (
-      A_ppu,
-      Di_ppu,
-      Do_ppu,
-      wr_ppu,
-      rd_ppu,
-      
-      A_mmu1ToVram,
-      Do_mmu1ToVram,
-      Di_mmu1ToVram,
-      cs_mmu1ToVram,
-      wr_mmu1ToVram,
-      rd_mmu1ToVram,
-      
-      A_mmu1ToOam,
-      Do_mmu1ToOam,
-      Di_mmu1ToOam,
-      cs_mmu1ToOam,
-      wr_mmu1ToOam,
-      rd_mmu1ToOam 
-   );
+//   ppuInternalMMU ppuInternalMMU1 (
+//      A_ppu,
+//      Di_ppu,
+//      Do_ppu,
+//      wr_ppu,
+//      rd_ppu,
+//      
+//      A_mmu1ToVram,
+//      Do_mmu1ToVram,
+//      Di_mmu1ToVram,
+//      cs_mmu1ToVram,
+//      wr_mmu1ToVram,
+//      rd_mmu1ToVram,
+//      
+//      A_mmu1ToOam,
+//      Do_mmu1ToOam,
+//      Di_mmu1ToOam,
+//      cs_mmu1ToOam,
+//      wr_mmu1ToOam,
+//      rd_mmu1ToOam 
+//   );
    
-   assign Di_mmu0ToVram = STAT[1] & STAT[0] ? 8'hFF : Di_vram;
-   assign Di_mmu0ToOam  = STAT[1] & ~STAT[0] ? 8'hFF : Di_oam;
+   assign Di_mmuToVram = STAT[1] & STAT[0] ? 8'hFF : Di_vramio;
+   assign Di_mmuToOam  = ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? 8'hFF : Di_oamio;
    
-   assign Di_mmu1ToVram = STAT[1] & STAT[0] ? Di_vram : 8'hFF;
-   assign Di_mmu1ToOam  = STAT[1] & ~STAT[0] ? Di_oam : 8'hFF;
+   assign Di_vram = STAT[1] & STAT[0] ? Di_vramio : 8'hFF;
+   assign Di_oam  = ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? Di_oamio : 8'hFF;
 
    
-   assign A_vram =   STAT[1] & STAT[0] ? A_mmu1ToVram    : A_mmu0ToVram;
-   assign Do_vram =  STAT[1] & STAT[0] ? Do_mmu1ToVram   : Do_mmu0ToVram;
-   assign wr_vram =  STAT[1] & STAT[0] ? wr_mmu1ToVram   : wr_mmu0ToVram;
-   assign rd_vram =  STAT[1] & STAT[0] ? rd_mmu1ToVram   : rd_mmu0ToVram;
+   assign A_vramio =   STAT[1] & STAT[0] ? A_vram    : A_mmuToVram;
+   assign Do_vramio =  STAT[1] & STAT[0] ? Do_vram   : Do_mmuToVram;
+   assign wr_vramio =  STAT[1] & STAT[0] ? wr_vram   : wr_mmuToVram;
+   assign rd_vramio =  STAT[1] & STAT[0] ? rd_vram   : rd_mmuToVram;
    
-   assign A_oam =    ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0]))  ? A_mmu1ToOam    : A_mmu0ToOam;
-   assign Do_oam =   ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? Do_mmu1ToOam   : Do_mmu0ToOam;
-   assign wr_oam =   ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? wr_mmu1ToOam   : wr_mmu0ToOam;
-   assign rd_oam =   ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? rd_mmu1ToOam   : rd_mmu0ToOam;
+   assign A_oamio =    ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? A_oam    : A_mmuToOam;
+   assign Do_oamio =   ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? Do_oam   : Do_mmuToOam;
+   assign wr_oamio =   ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? wr_oam   : wr_mmuToOam;
+   assign rd_oamio =   ((STAT[1] & ~STAT[0]) | (STAT[1] & STAT[0])) ? rd_oam   : rd_mmuToOam;
    
    
 always @(posedge clock) begin
@@ -216,37 +221,37 @@ always @(posedge clock) begin
                case(renderCount)
                
                   5'd0 : begin   renderCount <= renderCount + 1'b1;
-                                 A_ppu <= 16'h9800 + xBGTileIndex + 16'h0020 * LY[7:3];
-                                 rd_ppu <= 1'b1; end
+                                 A_vram <= 16'h1800 + xBGTileIndex + 16'h0020 * LY[7:3];
+                                 rd_vram <= 1'b1; end
                                  
                   5'd1 : begin   renderCount <= renderCount + 1'b1; end
             
-                  5'd2 : begin   A_ppu <= {4'b1000, Di_ppu, LY[2:0], 1'b0};
-                                 currentTileAddress <= Di_ppu;
+                  5'd2 : begin   A_vram <= {4'b0000, Di_vram, LY[2:0], 1'b0};
+                                 currentTileAddress <= Di_vram;
                                  renderCount <= renderCount + 1'b1; end
                                  
                   5'd3 : begin   renderCount <= renderCount + 1'b1; end
                                   
                   5'd4 : begin   for(i = 0; i < 8; i = i + 1) begin
                                    
-                                   LineBuffer3[8 * xBGTileIndex + i] <= ~Di_ppu[7-i]; 
-                                   LineBuffer1[8 * xBGTileIndex + i] <= ~Di_ppu[7-i]; 
+                                   LineBuffer3[8 * xBGTileIndex + i] <= ~Di_vram[7-i]; 
+                                   LineBuffer1[8 * xBGTileIndex + i] <= ~Di_vram[7-i]; 
 
                                  end
 
                                  renderCount <= renderCount + 1'b1; end
                    
-                  5'd5 : begin   A_ppu <= {4'b1000, currentTileAddress, LY[2:0], 1'b1};
+                  5'd5 : begin   A_vram <= {4'b0000, currentTileAddress, LY[2:0], 1'b1};
                                  renderCount <= renderCount + 1'b1; end
                   
                   5'd6 : begin   renderCount <= renderCount + 1'b1; end
                   
                   
-                  5'd7 : begin   rd_ppu <= 1'b0;
+                  5'd7 : begin   rd_vram <= 1'b0;
                                  for(i = 0; i < 8; i = i + 1) begin
                                    
-                                   LineBuffer0[8 * xBGTileIndex + i] <= ~Di_ppu[7-i]; 
-                                   LineBuffer2[8 * xBGTileIndex + i] <= ~Di_ppu[7-i]; 
+                                   LineBuffer0[8 * xBGTileIndex + i] <= ~Di_vram[7-i]; 
+                                   LineBuffer2[8 * xBGTileIndex + i] <= ~Di_vram[7-i]; 
 
                                  end
 
