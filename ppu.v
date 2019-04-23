@@ -181,7 +181,7 @@ assign LSTAT[2] = (LY == LYC) ? 1'b1 : 1'b0;
 reg [7:0] OBJArray [9:0][4:0];  ///0: Y // 1: X  // 2: CHR  // 3: Parameters  // 4: Index
 reg [3:0] OBJIndex = 4'b0;
 reg [5:0] OAMIndex = 6'b0;
-reg OAMYSortCount = 1'b0;
+reg [1:0] OAMYSortCount = 2'b00;
 
 
 reg [3:0] OBJFetchDatasCount = 4'b0;
@@ -212,21 +212,29 @@ always @(posedge clock) begin
                      IRQ <= 1'b0;
                      updateBufferSignal <= 1'b0;
                      
+                     LineOBJBuffer0 <= 160'b0;
+                     LineOBJBuffer1 <= 160'b0;
+                     LineOBJBuffer2 <= 160'b0;
+                     LineOBJBuffer3 <= 160'b0;
                      
                      case(OAMYSortCount) 
+                        2'd0 :   begin
+                                    OAMYSortCount <= OAMYSortCount + 1'b1;
+                                    A_oam <= 16'h0000;
+                                 end
                         
-                        1'b0 :   begin
+                        2'd1 :   begin
                                     OAMYSortCount <= OAMYSortCount + 1'b1;
                                  end
                            
-                        1'b1 :   begin
+                        2'd2 :   begin
                                     A_oam <= {8'h0, OAMIndex + 1'b1, 2'b00};
-                                    if((Di_oam >= (LY + 8'd9)) && (Di_oam <= (LY + 8'd23)) && (OBJIndex < 4'd10) && (Di_oam != 8'b0)) begin
+                                    if((Di_oam >= (LY + 8'd9)) && (Di_oam <= (LY + 8'd16)) && (OBJIndex < 4'd10) && (Di_oam != 8'b0)) begin
                                        OBJArray[OBJIndex][0] <= Di_oam;
                                        OBJArray[OBJIndex][4] <= {2'b0, OAMIndex};
                                        OBJIndex <= OBJIndex + 1'b1;
                                     end
-                                    OAMYSortCount <= 1'b0;
+                                    OAMYSortCount <= 2'd1;
                                     OAMIndex <= OAMIndex + 1'b1;
                                  end
                      endcase
@@ -261,7 +269,7 @@ always @(posedge clock) begin
                            5'd5: OBJFetchDatasCount <= OBJFetchDatasCount + 1'b1; 
                                                       
                            5'd6: begin
-                                    OBJFetchDatasCount <=  5'b0; 
+                                    OBJFetchDatasCount <=  4'b0; 
                                     OBJFetchIndex <= OBJFetchIndex + 1'b1;
                                     OBJArray[OBJFetchIndex][3] <= Di_oam;
                                  end
@@ -288,8 +296,8 @@ always @(posedge clock) begin
                                               
                                        5'd3 : begin   for(i = 0; i < 8; i = i + 1) begin
                                                
-                                               LineBGBuffer3[8 * xBGTileIndex + i] <= ~Di_vram[7-i]; 
-                                               LineBGBuffer1[8 * xBGTileIndex + i] <= ~Di_vram[7-i]; 
+                                               LineBGBuffer3[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
+                                               LineBGBuffer1[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
 
                                              end
                                              A_vram <= {4'b0000, currentTileAddress, LY[2:0], 1'b1};
@@ -301,8 +309,8 @@ always @(posedge clock) begin
                               
                                        5'd5 : begin   for(i = 0; i < 8; i = i + 1) 
                                              begin
-                                               LineBGBuffer0[8 * xBGTileIndex + i] <= ~Di_vram[7-i]; 
-                                               LineBGBuffer2[8 * xBGTileIndex + i] <= ~Di_vram[7-i]; 
+                                               LineBGBuffer0[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
+                                               LineBGBuffer2[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
                                              end
                                              A_vram <= 16'h1800 + (xBGTileIndex + 1'b1) + 16'h0020 * LY[7:3];
                                              renderBGCount <= 5'd0; 
@@ -316,7 +324,7 @@ always @(posedge clock) begin
                           
                            3'b010:  begin
                                        if(OBJIndex != 4'b0) begin
-                                          A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0]-(OBJArray[OBJRenderIndex][0][2:0]), 1'b0};
+                                          A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
                                           renderMode <= 3'b011;
                                        end 
                                        else
@@ -330,24 +338,24 @@ always @(posedge clock) begin
                                           5'd1 :   begin
                                                       for(i = 0; i < 8; i = i + 1) 
                                                          begin
-                                                         LineOBJBuffer0[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= ~Di_vram[7-i]; 
-                                                         LineOBJBuffer2[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= ~Di_vram[7-i]; 
+                                                         LineOBJBuffer0[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= Di_vram[7-i]; 
+                                                         LineOBJBuffer2[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= Di_vram[7-i]; 
                                                          end
-                                                      A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0], 1'b1};
+                                                      A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
                                                       renderOBJCount <= renderOBJCount + 1'b1;
                                                    end
                                           5'd2 :   renderOBJCount <= renderOBJCount + 1'b1;
                                           5'd3 :   begin
                                                       for(i = 0; i < 8; i = i + 1) 
                                                          begin
-                                                         LineOBJBuffer1[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= ~Di_vram[7-i]; 
-                                                         LineOBJBuffer3[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= ~Di_vram[7-i]; 
+                                                         LineOBJBuffer1[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= Di_vram[7-i]; 
+                                                         LineOBJBuffer3[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= Di_vram[7-i]; 
                                                          end
                                                       renderOBJCount <= 5'b0;
-                                                      if (OBJRenderIndex < OBJIndex)
+                                                      if (OBJRenderIndex < OBJIndex - 1'b1)
                                                          begin
                                                             OBJRenderIndex <= OBJRenderIndex + 1'b1; 
-                                                            A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2], LY[2:0], 1'b0};
+                                                            A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
                                                          end
                                                          else
                                                             renderMode = 3'b100;
@@ -366,10 +374,16 @@ always @(posedge clock) begin
                      if(renderAssembly < 2'd2)  begin
                         case(renderAssembly)
                            2'd0 :   begin
-                                       LineBuffer0 <= LineBGBuffer0 | LineOBJBuffer0;
-                                       LineBuffer1 <= LineBGBuffer1 | LineOBJBuffer1;
-                                       LineBuffer2 <= LineBGBuffer2 | LineOBJBuffer2;
-                                       LineBuffer3 <= LineBGBuffer3 | LineOBJBuffer3;
+                                       LineBuffer0 <= ~(LineBGBuffer0 | LineOBJBuffer0);
+                                       LineBuffer1 <= ~(LineBGBuffer1 | LineOBJBuffer1);
+                                       LineBuffer2 <= ~(LineBGBuffer2 | LineOBJBuffer2);
+                                       LineBuffer3 <= ~(LineBGBuffer3 | LineOBJBuffer3);
+                                       
+//                                       LineBuffer0 <= LineOBJBuffer0;
+//                                       LineBuffer1 <= LineOBJBuffer1;
+//                                       LineBuffer2 <= LineOBJBuffer2;
+//                                       LineBuffer3 <= LineOBJBuffer3;
+                                       
                                        renderAssembly <= renderAssembly + 1'b1;
                                     end
                            
@@ -384,7 +398,7 @@ always @(posedge clock) begin
                                        renderMode <= 3'b000;
                                        
                 
-                                       OAMYSortCount <= 1'b0;
+                                       OAMYSortCount <= 2'b00;
 
 
                                        OBJFetchDatasCount <= 4'b0;
