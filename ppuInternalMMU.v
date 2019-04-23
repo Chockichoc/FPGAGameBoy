@@ -21,7 +21,8 @@ module ppuInternalMMU(
    output            rd_oam,
 
    input   [7:0] LCDC,
-   input   [7:0] STAT,
+   input   [4:0] HSTAT,
+   input   [2:0] LSTAT,
    input   [7:0] SCY ,
    input   [7:0] SCX ,
    input   [7:0] LY  ,
@@ -50,7 +51,7 @@ module ppuInternalMMU(
 
    assign Do_mmu = cs_vram ? Di_vram : (cs_oam ? Di_oam : 
          A_mmu == 16'hFF40 ? LCDC :
-         A_mmu == 16'hFF41 ? STAT :
+         A_mmu == 16'hFF41 ? {HSTAT, LSTAT} :
          A_mmu == 16'hFF42 ? SCY  :
          A_mmu == 16'hFF43 ? SCX  :
          A_mmu == 16'hFF44 ? LY   :

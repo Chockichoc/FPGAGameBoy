@@ -1,4 +1,4 @@
-module HVSync(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer0, LineBuffer1, LineBuffer2, LineBuffer3);
+module HVSync(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer0, LineBuffer1, LineBuffer2, LineBuffer3, updateBufferSignal);
 
 input pixelClk;
 output HSync;
@@ -7,12 +7,13 @@ output [3:0] R;
 output [3:0] G;
 output [3:0] B;
 input  [7:0] LY;
-reg [7:0] oldLY = 8'b0;
 input [159:0] LineBuffer0;
 input [159:0] LineBuffer1;
 input [159:0] LineBuffer2;
 input [159:0] LineBuffer3;
+input updateBufferSignal;
 
+reg [7:0] oldLY = 8'b0;
 reg [9:0] HCount = 10'b0;
 reg [9:0] VCount = 10'b0;
 
@@ -110,7 +111,7 @@ reg  saveRoutineCounter = 1'b0;
 
 always @(posedge pixelClk) begin
 
-   if(LY != oldLY ||saveRoutineCounter > 3'd0) begin
+   if((LY != oldLY && updateBufferSignal == 1'b1) ||saveRoutineCounter > 3'd0) begin
       if (saveRoutineCounter == 1'b0) begin
          wr_buffer <= 1'b1;
          saveRoutineCounter <= saveRoutineCounter + 1'b1;

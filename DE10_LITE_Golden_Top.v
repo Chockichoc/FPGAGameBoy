@@ -410,7 +410,7 @@ ppu ppu0(
    VGA_VS,
    VGA_R,
    VGA_G,
-   VGA_B
+   VGA_B,
 
 );
 
