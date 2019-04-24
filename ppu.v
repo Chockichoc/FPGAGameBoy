@@ -23,22 +23,29 @@ module ppu (
    output reg IRQ,
    output [7:0] dmaAdress,
    
-   input pixelClk,
-   output  HSync,
-   output  VSync,
-   output  [3:0] R,
-   output  [3:0] G,
-   output  [3:0] B
+   output reg [7:0] LY = 8'b0, 
+   output reg [159:0] LineBuffer0, 
+   output reg [159:0] LineBuffer1, 
+   output reg [159:0] LineBuffer2, 
+   output reg [159:0] LineBuffer3, 
+   output reg updateBufferSignal = 1'b0
+   
+   
+//   input pixelClk,
+//   output  HSync,
+//   output  VSync,
+//   output  [3:0] R,
+//   output  [3:0] G,
+//   output  [3:0] B
 );
 
    assign dmaAdress = DMA;
 
-   HVSync HVSync0(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer0, LineBuffer1, LineBuffer2, LineBuffer3, updateBufferSignal);
 
-   reg [159:0] LineBuffer0;
-   reg [159:0] LineBuffer1;
-   reg [159:0] LineBuffer2;
-   reg [159:0] LineBuffer3;
+//   reg [159:0] LineBuffer0;
+//   reg [159:0] LineBuffer1;
+//   reg [159:0] LineBuffer2;
+//   reg [159:0] LineBuffer3;
    
    reg [159:0] LineBGBuffer0;
    reg [159:0] LineBGBuffer1;
@@ -50,7 +57,7 @@ module ppu (
    reg [159:0] LineOBJBuffer2;
    reg [159:0] LineOBJBuffer3;
 
-   reg updateBufferSignal = 1'b0;
+//   reg updateBufferSignal = 1'b0;
    
    reg [8:0]  XCount = 9'b0;  
 
@@ -71,7 +78,7 @@ module ppu (
    wire  [2:0]    LSTAT;
    reg   [7:0]    SCY   = 8'b0;
    reg   [7:0]    SCX   = 8'b0;
-   reg   [7:0]    LY    = 8'b0;
+//   reg   [7:0]    LY    = 8'b0;
    reg   [7:0]    LYC   = 8'b0;
    reg   [7:0]    DMA   = 8'b0;
    reg   [7:0]    BGP   = 8'b0;

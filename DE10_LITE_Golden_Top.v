@@ -207,6 +207,13 @@ wire IRQVBlank;
 wire [7:0] dmaAdress;
 wire dmaEnableSignal;
 
+wire [7:0] LY; 
+wire [159:0] LineBuffer0; 
+wire [159:0] LineBuffer1; 
+wire [159:0] LineBuffer2; 
+wire [159:0] LineBuffer3; 
+wire updateBufferSignal;
+
 //debug
 wire [7:0] A;
 wire [7:0] B;
@@ -405,12 +412,12 @@ ppu ppu0(
    IRQVBlank,
    dmaAdress,
    
-   clk,
-   VGA_HS,
-   VGA_VS,
-   VGA_R,
-   VGA_G,
-   VGA_B
+   LY, 
+   LineBuffer0, 
+   LineBuffer1, 
+   LineBuffer2, 
+   LineBuffer3, 
+   updateBufferSignal
 
 );
 
@@ -450,6 +457,19 @@ cpu cpu0 (
 
 );
 
+HVSync HVSync0(
+clk, 
+VGA_HS, 
+VGA_VS, 
+VGA_R, 
+VGA_G, 
+VGA_B, 
+LY, 
+LineBuffer0, 
+LineBuffer1, 
+LineBuffer2, 
+LineBuffer3, 
+updateBufferSignal);
 
 
 
