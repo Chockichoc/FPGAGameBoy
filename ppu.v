@@ -228,7 +228,7 @@ always @(posedge clock) begin
                            
                         2'd2 :   begin
                                     A_oam <= {8'h0, OAMIndex + 1'b1, 2'b00};
-                                    if((Di_oam >= (LY + 8'd9)) && (Di_oam <= (LY + 8'd16)) && (OBJIndex < 4'd10) && (Di_oam != 8'b0)) begin
+                                    if((Di_oam >= LY + (LCDC[2] ? 8'd1 : 8'd9)) && (Di_oam <= LY + 8'd16) && (OBJIndex < 4'd10) && (Di_oam != 8'b0)) begin
                                        OBJArray[OBJIndex][0] <= Di_oam;
                                        OBJArray[OBJIndex][4] <= {2'b0, OAMIndex};
                                        OBJIndex <= OBJIndex + 1'b1;
@@ -323,7 +323,10 @@ always @(posedge clock) begin
                           
                            3'b010:  begin
                                        if(OBJIndex != 4'b0) begin
-                                          A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                          if(OBJArray[OBJRenderIndex][0] - LY < 4'd9)
+                                             A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                          else
+                                             A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
                                           renderMode <= 3'b011;
                                        end 
                                        else
@@ -340,7 +343,11 @@ always @(posedge clock) begin
                                                          LineOBJBuffer0[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i]; 
                                                          LineOBJBuffer2[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i]; 
                                                          end
-                                                      A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
+                                                      if(OBJArray[OBJRenderIndex][0] - LY < 4'd9)
+                                                            A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
+                                                               else
+                                                            A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
+                                                      
                                                       renderOBJCount <= renderOBJCount + 1'b1;
                                                    end
                                           5'd2 :   renderOBJCount <= renderOBJCount + 1'b1;
@@ -354,7 +361,11 @@ always @(posedge clock) begin
                                                       if (OBJRenderIndex < OBJIndex - 1'b1)
                                                          begin
                                                             OBJRenderIndex <= OBJRenderIndex + 1'b1; 
-                                                            A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                                            if(OBJArray[OBJRenderIndex + 1'b1][0] - LY < 4'd9)
+                                                               A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex + 1'b1][0][2:0], 1'b0};
+                                                                  else
+                                                               A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2], LY[2:0] - OBJArray[OBJRenderIndex + 1'b1][0][2:0], 1'b0};
+                                                               
                                                          end
                                                          else
                                                             renderMode = 3'b100;
