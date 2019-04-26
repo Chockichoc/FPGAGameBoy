@@ -75,7 +75,7 @@ always @(posedge pixelClk) begin
 
 end
 
-always @(negedge HCountMax) begin
+always @(posedge HCountMax) begin
 	
 	if(VCountMax)
 		VCount <= 10'd0;
@@ -85,42 +85,28 @@ always @(negedge HCountMax) begin
 		
 end
 
-assign HSync = (HCount >= 10'd655 && HCount <= 10'd750) ? 1'b0 : 1'b1;
-assign VSync = (VCount >= 10'd489 && VCount <= 10'd491) ? 1'b0 : 1'b1;
+assign HSync = (HCount >= 10'd656 && HCount <= 10'd751) ? 1'b0 : 1'b1;
+assign VSync = (VCount >= 10'd492 && VCount <= 10'd493) ? 1'b0 : 1'b1;
 
-
-//always @(posedge pixelClk) begin
-//
-//	if(HCount >= 10'd655 && HCount <= 10'd750)
-//		HSync <= 1'b0;
-//	else
-//		HSync <= 1'b1;
-//	
-//end
-//
-//always @(posedge HCount[0]) begin
-//
-//	if(VCount >= 10'd489 && VCount <= 10'd491)
-//		VSync <= 1'b0;
-//	else
-//		VSync <= 1'b1;
-//      
-//end
-
-reg  saveRoutineCounter = 1'b0;
+reg [1:0] saveRoutineCounter = 2'b00;
 
 always @(posedge pixelClk) begin
 
-   if((LY != oldLY && updateBufferSignal == 1'b1) ||saveRoutineCounter > 3'd0) begin
-      if (saveRoutineCounter == 1'b0) begin
-         wr_buffer <= 1'b1;
+   if(oldLY != LY && updateBufferSignal == 1'b1 || saveRoutineCounter != 2'b00) begin
+      if (saveRoutineCounter == 2'b00) begin
+         oldLY <= LY;
          saveRoutineCounter <= saveRoutineCounter + 1'b1;
       end
-         
-      if (saveRoutineCounter == 1'b1) begin
+      if (saveRoutineCounter == 2'b01) begin
+         saveRoutineCounter <= saveRoutineCounter + 1'b1;
+      end
+      if (saveRoutineCounter == 2'b10) begin
+         wr_buffer <= 1'b1;  
+         saveRoutineCounter <= saveRoutineCounter + 1'b1;
+      end
+      if (saveRoutineCounter == 2'b11) begin
          wr_buffer <= 1'b0;  
-         saveRoutineCounter <= 1'b0;
-         oldLY <= LY;
+         saveRoutineCounter <= 2'b00;
       end
    end
 
