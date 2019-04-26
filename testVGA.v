@@ -1,4 +1,4 @@
-module HVSync(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer0, LineBuffer1, LineBuffer2, LineBuffer3, updateBufferSignal);
+module HVSync(pixelClk, HSync, VSync, R, G, B, LY, LineBuffer0, LineBuffer1, updateBufferSignal);
 
 input pixelClk;
 output HSync;
@@ -9,57 +9,35 @@ output [3:0] B;
 input  [7:0] LY;
 input [159:0] LineBuffer0;
 input [159:0] LineBuffer1;
-input [159:0] LineBuffer2;
-input [159:0] LineBuffer3;
+
 input updateBufferSignal;
 
 reg [7:0] oldLY = 8'b0;
 reg [9:0] HCount = 10'b0;
 reg [9:0] VCount = 10'b0;
 
-//wire HSync = 1'b1;
-//wire VSync = 1'b1;
-//reg [3:0] R = 4'b0000;
-//reg [3:0] G = 4'b0000;
-//reg [3:0] B = 4'b0000;
-
 wire HCountMax = (HCount == 799); 
 wire VCountMax = (VCount == 524);
 
 wire [159:0] bufferOutput0;
 wire [159:0] bufferOutput1;
-wire [159:0] bufferOutput2;
-wire [159:0] bufferOutput3;
 
-reg wr_buffer;
+reg wr_buffer = 1'b0;
 
 videoRam ppuBuffer0(pixelClk,
 	LineBuffer0,
 	VCount,
-	LY,
+	oldLY,
 	wr_buffer,
 	bufferOutput0);
 
 videoRam ppuBuffer1(pixelClk,
 	LineBuffer1,
 	VCount,
-	LY,
+	oldLY,
 	wr_buffer,
 	bufferOutput1);
 
-videoRam ppuBuffer2(pixelClk,
-	LineBuffer2,
-	VCount,
-	LY,
-	wr_buffer,
-	bufferOutput2);
-   
-videoRam ppuBuffer3(pixelClk,
-	LineBuffer3,
-	VCount,
-	LY,
-	wr_buffer,
-	bufferOutput3);
 
 always @(posedge pixelClk) begin
 	
@@ -112,26 +90,24 @@ always @(posedge pixelClk) begin
 
 end
 
-assign R = (VCount < 10'd144 && HCount < 10'd160) ? {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]} : 4'b0000;
-assign G = (VCount < 10'd144 && HCount < 10'd160) ? {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]} : 4'b0000;
-assign B = (VCount < 10'd144 && HCount < 10'd160) ? {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]} : 4'b0000;
+assign R = (VCount < 10'd144 && HCount < 10'd160) ? 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b00 ? 4'b1101 : 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b01 ? 4'b1000 : 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b10 ? 4'b0011 : 
+   4'b0001))) : 4'b0000;
+   
+assign G = (VCount < 10'd144 && HCount < 10'd160) ? 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b00 ? 4'b1111 : 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b01 ? 4'b1011 : 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b10 ? 4'b0110 : 
+   4'b0001))) : 4'b0000;
+   
+assign B = (VCount < 10'd144 && HCount < 10'd160) ? 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b00 ? 4'b1100 : 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b01 ? 4'b0111 : 
+   ({bufferOutput1[HCount], bufferOutput0[HCount]} == 2'b10 ? 4'b0101 : 
+   4'b0010))) : 4'b0000;
 
 
 
-//always @(posedge pixelClk) begin
-//
-//    if(VCount < 10'd144 && HCount < 10'd160) begin
-//      R <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
-//      G <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
-//      B <= {bufferOutput0[HCount], bufferOutput1[HCount], bufferOutput2[HCount], bufferOutput3[HCount]};
-//
-//	end
-//	else begin
-//		R <= 4'b0000;
-//		G <= 4'b0000;
-//		B <= 4'b0000;
-//	end
-//
-//
-//end
 endmodule

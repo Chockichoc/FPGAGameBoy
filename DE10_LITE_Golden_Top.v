@@ -415,8 +415,6 @@ ppu ppu0(
    LY, 
    LineBuffer0, 
    LineBuffer1, 
-   LineBuffer2, 
-   LineBuffer3, 
    updateBufferSignal
 
 );
@@ -467,8 +465,6 @@ VGA_B,
 LY, 
 LineBuffer0, 
 LineBuffer1, 
-LineBuffer2, 
-LineBuffer3, 
 updateBufferSignal);
 
 

@@ -24,40 +24,20 @@ module ppu (
    output [7:0] dmaAdress,
    
    output reg [7:0] LY = 8'b0, 
-   output reg [159:0] LineBuffer0, 
-   output reg [159:0] LineBuffer1, 
-   output reg [159:0] LineBuffer2, 
-   output reg [159:0] LineBuffer3, 
+   output reg [159:0] LinePxlColorArray0,
+   output reg [159:0] LinePxlColorArray1,
+
    output reg updateBufferSignal = 1'b0
    
-   
-//   input pixelClk,
-//   output  HSync,
-//   output  VSync,
-//   output  [3:0] R,
-//   output  [3:0] G,
-//   output  [3:0] B
+
 );
 
    assign dmaAdress = DMA;
 
-
-//   reg [159:0] LineBuffer0;
-//   reg [159:0] LineBuffer1;
-//   reg [159:0] LineBuffer2;
-//   reg [159:0] LineBuffer3;
    
-   reg [159:0] LineBGBuffer0;
-   reg [159:0] LineBGBuffer1;
-   reg [159:0] LineBGBuffer2;
-   reg [159:0] LineBGBuffer3;
+   reg [159:0] LineBGDotDatas0;
+   reg [159:0] LineBGDotDatas1;
    
-   reg [159:0] LineOBJBuffer0;
-   reg [159:0] LineOBJBuffer1;
-   reg [159:0] LineOBJBuffer2;
-   reg [159:0] LineOBJBuffer3;
-
-//   reg updateBufferSignal = 1'b0;
    
    reg [8:0]  XCount = 9'b0;  
 
@@ -198,11 +178,12 @@ reg [3:0] OBJFetchIndex = 4'b0;
 reg [2:0] renderMode = 3'b000; // 0: init BG rendering // 1: render BG // 2: init OBJ rendering // 3: render OBJ // 4: sleep
 reg [4:0] renderBGCount = 5'b0;
 reg [4:0] renderOBJCount = 5'd0;
+reg [7:0] pixelDotData = 8'b0;
 
 reg [4:0] xBGTileIndex = 5'b0;
 reg [3:0] OBJRenderIndex = 4'b0;
 
-reg [2:0] renderAssembly = 3'b00;
+reg [2:0] renderAssembly = 3'b000;
 
 
 reg [7:0] currentTileAddress = 8'b0;
@@ -217,11 +198,6 @@ always @(posedge clock) begin
          2'b10:   begin
                      renderAssembly <= 3'd0;
                      IRQ <= 1'b0;
-                     
-                     LineOBJBuffer0 <= 160'b0;
-                     LineOBJBuffer1 <= 160'b0;
-                     LineOBJBuffer2 <= 160'b0;
-                     LineOBJBuffer3 <= 160'b0;
                      
                      case(OAMYSortCount) 
                         2'd0 :   begin
@@ -302,8 +278,7 @@ always @(posedge clock) begin
                                               
                                        5'd3 : begin   for(i = 0; i < 8; i = i + 1) begin
                                                
-                                               LineBGBuffer3[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
-                                               LineBGBuffer1[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
+                                               LineBGDotDatas0[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
 
                                              end
                                              A_vram <= {4'b0000, currentTileAddress, LY[2:0], 1'b1};
@@ -315,8 +290,15 @@ always @(posedge clock) begin
                               
                                        5'd5 : begin   for(i = 0; i < 8; i = i + 1) 
                                              begin
-                                               LineBGBuffer0[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
-                                               LineBGBuffer2[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
+                                               LineBGDotDatas1[8 * xBGTileIndex + i] <= Di_vram[7-i];
+                                               
+                                               case({Di_vram[7-i],LineBGDotDatas0[8 * xBGTileIndex + i]})
+                                                   2'b00:   {LinePxlColorArray1[8 * xBGTileIndex + i], LinePxlColorArray0[8 * xBGTileIndex + i]} <= BGP[1:0];
+                                                   2'b01:   {LinePxlColorArray1[8 * xBGTileIndex + i], LinePxlColorArray0[8 * xBGTileIndex + i]} <= BGP[3:2];
+                                                   2'b10:   {LinePxlColorArray1[8 * xBGTileIndex + i], LinePxlColorArray0[8 * xBGTileIndex + i]} <= BGP[5:4];
+                                                   2'b11:   {LinePxlColorArray1[8 * xBGTileIndex + i], LinePxlColorArray0[8 * xBGTileIndex + i]} <= BGP[7:6];
+                                               endcase
+                                               
                                              end
                                              A_vram <= 16'h1800 + (xBGTileIndex + 1'b1) + 16'h0020 * LY[7:3];
                                              renderBGCount <= 5'd0; 
@@ -346,10 +328,8 @@ always @(posedge clock) begin
                                    
                                           5'd1 :   begin
                                                       for(i = 0; i < 8; i = i + 1) 
-                                                         begin
-                                                         LineOBJBuffer0[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i]; 
-                                                         LineOBJBuffer2[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i]; 
-                                                         end
+                                                        pixelDotData[i] <= OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i];
+                                                         
                                                       if(OBJArray[OBJRenderIndex][0] - LY < 4'd9)
                                                             A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
                                                                else
@@ -361,8 +341,18 @@ always @(posedge clock) begin
                                           5'd3 :   begin
                                                       for(i = 0; i < 8; i = i + 1) 
                                                          begin
-                                                         LineOBJBuffer1[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i]; 
-                                                         LineOBJBuffer3[OBJArray[OBJRenderIndex][1] + i - 4'd8] <= OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i]; 
+                                                         
+                                                         if({LineBGDotDatas1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LineBGDotDatas0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} == 2'b00  || 
+                                                         ({OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i], pixelDotData[i]} != 2'b00 && OBJArray[OBJRenderIndex][3][7] == 1'b0 ) )
+                                                            begin
+                                                               case({OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i], pixelDotData[i]})
+                                                                  2'b00:   ;
+                                                                  2'b01:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[1:0] : OBP0[3:2];
+                                                                  2'b10:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[1:0] : OBP0[5:4];
+                                                                  2'b11:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[1:0] : OBP0[7:6];
+                                                               endcase
+                                                            end
+
                                                          end
                                                       renderOBJCount <= 5'b0;
                                                       if (OBJRenderIndex < OBJIndex - 1'b1)
@@ -391,16 +381,7 @@ always @(posedge clock) begin
                      if(renderAssembly < 2'd2)  begin
                         case(renderAssembly)
                            3'd0 :   begin
-                                       LineBuffer0 <= ~(LineBGBuffer0 | LineOBJBuffer0);
-                                       LineBuffer1 <= ~(LineBGBuffer1 | LineOBJBuffer1);
-                                       LineBuffer2 <= ~(LineBGBuffer2 | LineOBJBuffer2);
-                                       LineBuffer3 <= ~(LineBGBuffer3 | LineOBJBuffer3);
-                                       
-//                                       LineBuffer0 <= LineOBJBuffer0;
-//                                       LineBuffer1 <= LineOBJBuffer1;
-//                                       LineBuffer2 <= LineOBJBuffer2;
-//                                       LineBuffer3 <= LineOBJBuffer3;
-                                       
+                                      
                                        renderAssembly <= renderAssembly + 1'b1;
                                     end
                            
@@ -447,7 +428,7 @@ always @(posedge clock) begin
       
       
       XCount <= (XCount == 9'd455) ? 9'd0 : (XCount + 1'b1);
-      if (XCount == 9'd454)
+      if (XCount == 9'd455)
          LY <= (LY == 8'd153) ? 8'd0 : (LY + 1'b1);
    
    end
