@@ -270,7 +270,7 @@ always @(posedge clock) begin
                                              
                                        5'd0 : begin   renderBGCount <= renderBGCount + 1'b1; end
                         
-                                       5'd1 : begin   A_vram <= {4'b0000, Di_vram, LY[2:0], 1'b0};
+                                       5'd1 : begin   A_vram <= LCDC[4] ? {4'b0000, Di_vram, LY[2:0], 1'b0} : ({4'h0000, (Di_vram + 8'h80), LY[2:0], 1'b0} + 16'h0800);
                                              currentTileAddress <= Di_vram;
                                              renderBGCount <= renderBGCount + 1'b1; end
                                              
@@ -281,7 +281,7 @@ always @(posedge clock) begin
                                                LineBGDotDatas0[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
 
                                              end
-                                             A_vram <= {4'b0000, currentTileAddress, LY[2:0], 1'b1};
+                                             A_vram <= LCDC[4] ? {4'b0000, currentTileAddress, LY[2:0], 1'b1} : ({4'h0000, (currentTileAddress + 8'h80), LY[2:0], 1'b1} + 16'h0800);
                                              renderBGCount <= renderBGCount + 1'b1; end
                                
                                        5'd4 : begin   
