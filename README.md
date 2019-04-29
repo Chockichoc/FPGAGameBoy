@@ -27,7 +27,7 @@ Although the goal of this project is not to be the most accurate emulator possib
   - [x] Sprites
   - [x] Render priorities
   - [ ] Scrolling
-  - [ ] Windows
+  - [x] Windows
 - [ ] Audio
 - [ ] Controller
 
