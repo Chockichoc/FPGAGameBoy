@@ -70,7 +70,7 @@ reg [1:0] saveRoutineCounter = 2'b00;
 
 always @(posedge pixelClk) begin
 
-   if(oldLY != LY && updateBufferSignal == 1'b1 || saveRoutineCounter != 2'b00) begin
+   if((oldLY != LY && updateBufferSignal == 1'b1) || saveRoutineCounter != 2'b00) begin
       if (saveRoutineCounter == 2'b00) begin
          oldLY <= LY;
          saveRoutineCounter <= saveRoutineCounter + 1'b1;

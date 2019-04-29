@@ -199,8 +199,12 @@ always @(posedge clock) begin
       case (LSTAT[1:0])
          2'b10:   begin
                      renderAssembly <= 3'd0;
-                     IRQ <= 1'b0;
-                     
+                     VBlankIRQ <= 1'b0;
+                     LinePxlColorArray0 = 160'b0;
+                     LinePxlColorArray1 = 160'b0;
+                     LineBGDotDatas0 = 160'b0;
+                     LineBGDotDatas1 = 160'b0;
+
                      case(OAMYSortCount) 
                         2'd0 :   begin
                                     OAMYSortCount <= OAMYSortCount + 1'b1;
@@ -222,6 +226,7 @@ always @(posedge clock) begin
                                     OAMIndex <= OAMIndex + 1'b1;
                                  end
                      endcase
+                     
                   end
                   
          2'b11:   begin
@@ -263,8 +268,14 @@ always @(posedge clock) begin
          
                      case(renderMode)
                         3'b000:  begin
-                                    A_vram <= 16'h1800 + 16'h0020 * LY[7:3];
-                                    renderMode <= 3'b001;
+                                    
+                                    if ((8'd7 >= WX && 8'b0 == WY) && LCDC[5])
+                                          renderMode = 3'b110;
+                                    else
+                                       begin
+                                          A_vram <= (LCDC[3] ? 16'h1C00 : 16'h1800) + 16'h0020 * LY[7:3];
+                                          renderMode <= 3'b001;
+                                       end
                                  end
                         
                         3'b001:  begin
@@ -272,9 +283,10 @@ always @(posedge clock) begin
                                              
                                        5'd0 : begin   renderBGCount <= renderBGCount + 1'b1; end
                         
-                                       5'd1 : begin   A_vram <= LCDC[4] ? {4'b0000, Di_vram, LY[2:0], 1'b0} : ({4'h0000, (Di_vram + 8'h80), LY[2:0], 1'b0} + 16'h0800);
-                                             currentTileAddress <= Di_vram;
-                                             renderBGCount <= renderBGCount + 1'b1; end
+                                       5'd1 : begin   
+                                                A_vram <= {4'b0000, Di_vram + (LCDC[4] ? 1'b0 : 8'h80), LY[2:0], 1'b0} + (LCDC[4] ? 1'b0 :  16'h0800);
+                                                currentTileAddress <= Di_vram;
+                                                renderBGCount <= renderBGCount + 1'b1; end
                                              
                                        5'd2 : begin   renderBGCount <= renderBGCount + 1'b1; end
                                               
@@ -283,7 +295,7 @@ always @(posedge clock) begin
                                                LineBGDotDatas0[8 * xBGTileIndex + i] <= Di_vram[7-i]; 
 
                                              end
-                                             A_vram <= LCDC[4] ? {4'b0000, currentTileAddress, LY[2:0], 1'b1} : ({4'h0000, (currentTileAddress + 8'h80), LY[2:0], 1'b1} + 16'h0800);
+                                             A_vram <= {4'b0000, currentTileAddress + (LCDC[4] ? 1'b0 : 8'h80), LY[2:0], 1'b1} + (LCDC[4] ? 1'b0 :  16'h0800);
                                              renderBGCount <= renderBGCount + 1'b1; end
                                
                                        5'd4 : begin   
@@ -294,7 +306,7 @@ always @(posedge clock) begin
                                              begin
                                                LineBGDotDatas1[8 * xBGTileIndex + i] <= Di_vram[7-i];
                                                
-                                               case({Di_vram[7-i],LineBGDotDatas0[8 * xBGTileIndex + i]})
+                                               case({Di_vram[7-i], LineBGDotDatas0[8 * xBGTileIndex + i]})
                                                    2'b00:   {LinePxlColorArray1[8 * xBGTileIndex + i], LinePxlColorArray0[8 * xBGTileIndex + i]} <= BGP[1:0];
                                                    2'b01:   {LinePxlColorArray1[8 * xBGTileIndex + i], LinePxlColorArray0[8 * xBGTileIndex + i]} <= BGP[3:2];
                                                    2'b10:   {LinePxlColorArray1[8 * xBGTileIndex + i], LinePxlColorArray0[8 * xBGTileIndex + i]} <= BGP[5:4];
@@ -302,29 +314,83 @@ always @(posedge clock) begin
                                                endcase
                                                
                                              end
-                                             A_vram <= 16'h1800 + (xBGTileIndex + 1'b1) + 16'h0020 * LY[7:3];
+                                             A_vram <= (LCDC[3] ? 16'h1C00 : 16'h1800) + (xBGTileIndex + 1'b1) + 16'h0020 * LY[7:3];
                                              renderBGCount <= 5'd0; 
-                                             if (xBGTileIndex == 5'd20)
+                                             if (xBGTileIndex == 5'd20 || (({xBGTileIndex + 1'b1, 3'b0} + 3'd7 > WX && LY + 1'b1 >= WY) && LCDC[5]))
                                                 renderMode = 3'b010;
+
                                              else
                                                 xBGTileIndex <= xBGTileIndex + 1'b1; end
 
                                     endcase
                                  end
-                          
+                                 
                            3'b010:  begin
+                                       A_vram <= (LCDC[6] ? 16'h1C00 : 16'h1800) + 16'h0020 * ((LY - WY) >> 3);
+                                       renderMode <= 3'b011;
+                                       xBGTileIndex <= 5'b0;
+                                    end
+                                    
+                           3'b011:  begin
+                                        case(renderBGCount)
+                                             
+                                       5'd0 : begin   renderBGCount <= renderBGCount + 1'b1; end
+                        
+                                       5'd1 : begin   
+                                                A_vram <=  LCDC[4] ? {4'b0000, Di_vram, LY[2:0] - WY[2:0], 1'b0} : ({4'b0000, Di_vram + 8'h80, LY[2:0] - WY[2:0], 1'b0} + 16'h0800);
+                                                currentTileAddress <= Di_vram;
+                                                renderBGCount <= renderBGCount + 1'b1; end
+                                             
+                                       5'd2 : begin   renderBGCount <= renderBGCount + 1'b1; end
+                                              
+                                       5'd3 : begin   for(i = 0; i < 8; i = i + 1) begin
+                                               
+                                               LineBGDotDatas0[8 * xBGTileIndex + WX - 3'd7 + i] <= Di_vram[7-i]; 
+
+                                             end
+                                                A_vram <= LCDC[4] ? {4'b0000, currentTileAddress, LY[2:0] - WY[2:0], 1'b1} : ({4'b0000, currentTileAddress + 8'h80, LY[2:0] - WY[2:0], 1'b1} + 16'h0800);
+                                                renderBGCount <= renderBGCount + 1'b1; end
+                               
+                                       5'd4 : begin   
+                                             renderBGCount <= renderBGCount + 1'b1; end
+                              
+                              
+                                       5'd5 : begin   for(i = 0; i < 8; i = i + 1) 
+                                             begin
+                                               LineBGDotDatas1[8 * xBGTileIndex + WX - 3'd7 + i] <= Di_vram[7-i];
+                                               
+                                               case({Di_vram[7-i], LineBGDotDatas0[8 * xBGTileIndex + WX - 3'd7 + i]})
+                                                   2'b00:   {LinePxlColorArray1[8 * xBGTileIndex + WX - 3'd7 + i], LinePxlColorArray0[8 * xBGTileIndex + WX - 3'd7 + i]} <= BGP[1:0];
+                                                   2'b01:   {LinePxlColorArray1[8 * xBGTileIndex + WX - 3'd7 + i], LinePxlColorArray0[8 * xBGTileIndex + WX - 3'd7 + i]} <= BGP[3:2];
+                                                   2'b10:   {LinePxlColorArray1[8 * xBGTileIndex + WX - 3'd7 + i], LinePxlColorArray0[8 * xBGTileIndex + WX - 3'd7 + i]} <= BGP[5:4];
+                                                   2'b11:   {LinePxlColorArray1[8 * xBGTileIndex + WX - 3'd7 + i], LinePxlColorArray0[8 * xBGTileIndex + WX - 3'd7 + i]} <= BGP[7:6];
+                                               endcase
+                                               
+                                             end
+                                             A_vram <= (LCDC[6] ? 16'h1C00 : 16'h1800) + (xBGTileIndex + 1'b1) + 16'h0020 * ((LY - WY) >> 3);
+                                             renderBGCount <= 5'd0; 
+                                             if ({xBGTileIndex + 1'b1, 3'b0} + WX - 3'd7 > 8'd160)
+                                                renderMode = 3'b100;
+                                             else
+                                                xBGTileIndex <= xBGTileIndex + 1'b1; end
+
+                                    endcase
+                           
+                                    end
+                          
+                           3'b100:  begin
                                        if(OBJIndex != 4'b0) begin
                                           if(OBJArray[OBJRenderIndex][0] - LY < 4'd9)
                                              A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
                                           else
                                              A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
-                                          renderMode <= 3'b011;
+                                          renderMode <= 3'b101;
                                        end 
                                        else
-                                          renderMode <= 3'b100;
+                                          renderMode <= 3'b110;
                                     end
                                  
-                           3'b011:  begin
+                           3'b101:  begin
                                        case(renderOBJCount) 
                                           5'd0 :   renderOBJCount <= renderOBJCount + 1'b1;
                                    
@@ -367,13 +433,13 @@ always @(posedge clock) begin
                                                                
                                                          end
                                                          else
-                                                            renderMode = 3'b100;
+                                                            renderMode = 3'b110;
 
                                                       end
                                        endcase
                                     end
                                     
-                              3'b100:  begin
+                              3'b110:  begin
                                        end
                      endcase
                   end
@@ -383,7 +449,7 @@ always @(posedge clock) begin
                      if(renderAssembly < 2'd2)  begin
                         case(renderAssembly)
                            3'd0 :   begin
-                                      
+                                       updateBufferSignal <= 1'b1;
                                        renderAssembly <= renderAssembly + 1'b1;
                                     end
                            
@@ -408,7 +474,7 @@ always @(posedge clock) begin
                                        renderOBJCount <= 5'd0;
 
                                        
-                                       updateBufferSignal <= 1'b1;
+                                       
                                        renderAssembly <= renderAssembly + 1'b1;
                                     end
                            3'd2: begin
@@ -422,7 +488,7 @@ always @(posedge clock) begin
                   end
                   
          2'b01:   begin
-                     IRQ <= 1'b1;
+                     VBlankIRQ <= 1'b1;
                      
          
                   end
