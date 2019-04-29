@@ -20,7 +20,8 @@ module ppu (
    output                  wr_oamio,
    output                  rd_oamio,
    
-   output reg IRQ,
+   output reg VBlankIRQ,
+   output LCDCIrq,
    output [7:0] dmaAdress,
    
    output reg [7:0] LY = 8'b0, 
@@ -55,7 +56,7 @@ module ppu (
    
    reg   [7:0]    LCDC  = 8'b0;
    reg   [4:0]    HSTAT  = 5'b0;
-   wire  [2:0]    LSTAT;
+   wire  [2:0]    LSTAT; 
    reg   [7:0]    SCY   = 8'b0;
    reg   [7:0]    SCX   = 8'b0;
 //   reg   [7:0]    LY    = 8'b0;
@@ -158,7 +159,7 @@ always @(posedge clock) begin
 
 end
 
-
+assign LCDCIrq = (HSTAT[3] && LSTAT[2]) || (HSTAT[2] && LSTAT[1] && ~LSTAT[0]) || (HSTAT[1] && ~LSTAT[1] && LSTAT[0]) || (HSTAT[0] && ~LSTAT[1] && ~LSTAT[0]);
 assign LSTAT[1:0] =  (LY >= 9'd144) ? 2'd1 : 
                      (LY < 8'd144 && XCount < 9'd80) ? 2'd2 : 
                      (LY < 8'd144 && XCount >= 9'd80 && XCount < 9'd252) ? 2'd3 : 
@@ -177,6 +178,7 @@ reg [3:0] OBJFetchIndex = 4'b0;
 
 reg [2:0] renderMode = 3'b000; // 0: init BG rendering // 1: render BG // 2: init OBJ rendering // 3: render OBJ // 4: sleep
 reg [4:0] renderBGCount = 5'b0;
+
 reg [4:0] renderOBJCount = 5'd0;
 reg [7:0] pixelDotData = 8'b0;
 
@@ -194,7 +196,7 @@ always @(posedge clock) begin
    if (LCDC[7]) begin
 
    
-      case (LSTAT)
+      case (LSTAT[1:0])
          2'b10:   begin
                      renderAssembly <= 3'd0;
                      IRQ <= 1'b0;

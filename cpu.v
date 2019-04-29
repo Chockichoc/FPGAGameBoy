@@ -108,6 +108,7 @@ module cpu(
    
    
    reg resetVBlank;
+   reg resetLCDCIrq;
 
 
    always @(posedge controllerIRQ) begin
@@ -127,8 +128,11 @@ module cpu(
    
    end
    
-   always @(posedge LCDCIRQ) begin
+   always @(posedge LCDCIRQ or posedge resetLCDCIrq) begin
    
+      if(resetLCDCIrq)
+      IF[1] <= 1'b0;
+      else
       IF[1] <= 1'b1;
    
    end
@@ -220,6 +224,7 @@ module cpu(
                                  3'd0  :  begin    A_cpu <= SP - 1'b1;
                                                    Do_cpu <= PC[15:8];
                                                    resetVBlank <= 1'b1;
+                                                   resetLCDCIrq <= 1'b1;
                                                    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                  3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                  3'd2  :  begin    wr <= 1'b1;
@@ -232,6 +237,7 @@ module cpu(
                                  3'd0  :  begin    A_cpu <= SP - 2'd2;
                                                    Do_cpu <= PC[7:0];
                                                    resetVBlank <= 1'b0;
+                                                   resetLCDCIrq <= 1'b0;
                                                    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                  3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                  3'd2  :  begin    wr <= 1'b1;
