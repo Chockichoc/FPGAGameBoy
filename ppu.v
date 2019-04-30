@@ -270,8 +270,8 @@ always @(posedge clock) begin
                      case(renderMode)
                         3'b000:  begin
                                     
-                                    if ((8'd7 >= WX && 8'b0 == WY) && LCDC[5])
-                                          renderMode = 3'b110;
+                                    if ((WX <= 8'd7 && 8'b0 == WY) && LCDC[5])
+                                          renderMode = 3'b010;
                                     else
                                        begin
                                           A_vram <= (LCDC[3] ? 16'h1C00 : 16'h1800) + 16'h0020 * LY[7:3];
@@ -319,7 +319,7 @@ always @(posedge clock) begin
                                              renderBGCount <= 5'd0; 
                                              if (xBGTileIndex == 5'd20 || (({xBGTileIndex + 1'b1, 3'b0} + 3'd7 > WX && LY + 1'b1 >= WY) && LCDC[5]))
                                                 renderMode = 3'b010;
-
+                                                //renderMode = 3'b100;
                                              else
                                                 xBGTileIndex <= xBGTileIndex + 1'b1; end
 
@@ -327,9 +327,13 @@ always @(posedge clock) begin
                                  end
                                  
                            3'b010:  begin
-                                       A_vram <= (LCDC[6] ? 16'h1C00 : 16'h1800) + 16'h0020 * ((LY - WY) >> 3);
-                                       renderMode <= 3'b011;
-                                       xBGTileIndex <= 5'b0;
+                                       if(WX < 8'd167 && WY <= LY && LCDC[5]) begin
+                                          A_vram <= (LCDC[6] ? 16'h1C00 : 16'h1800) + 16'h0020 * ((LY - WY) >> 3);
+                                          renderMode <= 3'b011;
+                                          xBGTileIndex <= 5'b0;
+                                       end
+                                       else
+                                          renderMode <= 3'b100;
                                     end
                                     
                            3'b011:  begin

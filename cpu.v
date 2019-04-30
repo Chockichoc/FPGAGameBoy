@@ -29,7 +29,6 @@ module cpu(
    input LCDCIRQ,
    input VBlankIRQ,
 
-
    output reg  [7:0]    A = 8'h00,
    output reg  [7:0]    B = 8'h00,
    output reg  [7:0]    C = 8'h00,
@@ -71,7 +70,7 @@ module cpu(
    reg            IME = 1'b0;
    
    //Current Instruction
-   reg   [7:0]    CI = 8'bz;
+   reg   [7:0]    CI = 8'b0;
    reg   [2:0]    CurrentMCycle = 3'd0;
    reg   [2:0]    CurrentTCycle = 3'd0;
    reg   [7:0]    CB = 8'b0;
