@@ -415,9 +415,9 @@ always @(posedge clock) begin
                                                             begin
                                                                case({OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i], pixelDotData[i]})
                                                                   2'b00:   ;
-                                                                  2'b01:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[1:0] : OBP0[3:2];
-                                                                  2'b10:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[1:0] : OBP0[5:4];
-                                                                  2'b11:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[1:0] : OBP0[7:6];
+                                                                  2'b01:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[3:2] : OBP0[3:2];
+                                                                  2'b10:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[5:4] : OBP0[5:4];
+                                                                  2'b11:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[7:6] : OBP0[7:6];
                                                                endcase
                                                             end
 
