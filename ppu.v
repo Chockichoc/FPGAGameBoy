@@ -160,10 +160,11 @@ always @(posedge clock) begin
 end
 
 assign LCDCIrq = (HSTAT[3] && LSTAT[2]) || (HSTAT[2] && LSTAT[1] && ~LSTAT[0]) || (HSTAT[1] && ~LSTAT[1] && LSTAT[0]) || (HSTAT[0] && ~LSTAT[1] && ~LSTAT[0]);
-assign LSTAT[1:0] =  (LY >= 9'd144) ? 2'd1 : 
+assign LSTAT[1:0] =  LCDC[7] == 1'b0 ? 2'd0 :
+                     ((LY >= 9'd144) ? 2'd1 : 
                      (LY < 8'd144 && XCount < 9'd80) ? 2'd2 : 
                      (LY < 8'd144 && XCount >= 9'd80 && XCount < 9'd252) ? 2'd3 : 
-                     2'd0;
+                     2'd0);
 assign LSTAT[2] = (LY == LYC) ? 1'b1 : 1'b0;
 
 reg [7:0] OBJArray [9:0][4:0];  ///0: Y // 1: X  // 2: CHR  // 3: Parameters  // 4: Index
