@@ -2,7 +2,7 @@
 an implementation of the GameBoy in Verilog
 
 [![demo](https://i.imgur.com/TRDNHrV.png)](https://i.imgur.com/IhCdJPn.mp4)  
-🡑 clic to play the video
+🡑 click to play video
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ Although the goal of this project is not to be the most accurate emulator possib
   - [x] Sprites
   - [x] Render priorities
   - [ ] Scrolling
-  - [ ] Windows
+  - [x] Windows
 - [ ] Audio
 - [ ] Controller
 
