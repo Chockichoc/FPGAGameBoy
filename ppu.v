@@ -384,7 +384,7 @@ always @(posedge clock) begin
                                     end
                           
                            3'b100:  begin
-                                       if(OBJIndex != 4'b0) begin
+                                       if(OBJIndex != 4'b0 && LCDC[1]) begin
                                           if(OBJArray[OBJRenderIndex][0] - LY < 4'd9)
                                              A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
                                           else
