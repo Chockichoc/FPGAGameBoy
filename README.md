@@ -29,7 +29,9 @@ Although the goal of this project is not to be the most accurate emulator possib
   - [ ] Scrolling
   - [x] Windows
 - [ ] Audio
-- [ ] Controller
+- [x] Controller
+- [x] Timer
+- [ ] Serial communication
 
 
 <a name="credits"></a>
