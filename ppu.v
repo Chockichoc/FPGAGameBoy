@@ -385,10 +385,18 @@ always @(posedge clock) begin
                           
                            3'b100:  begin
                                        if(OBJIndex != 4'b0 && LCDC[1]) begin
+                                             
                                           if(OBJArray[OBJRenderIndex][0] - LY < 4'd9)
-                                             A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                             case(OBJArray[OBJRenderIndex][3][6])
+                                                1'b0 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                                1'b1 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, 3'd7 - LY[2:0] + OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                             endcase
                                           else
-                                             A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                             case(OBJArray[OBJRenderIndex][3][6])
+                                                1'b0 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                                1'b1 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], 3'd7 - LY[2:0] + OBJArray[OBJRenderIndex][0][2:0], 1'b0};
+                                             endcase   
+                                          
                                           renderMode <= 3'b101;
                                        end 
                                        else
@@ -401,12 +409,21 @@ always @(posedge clock) begin
                                    
                                           5'd1 :   begin
                                                       for(i = 0; i < 8; i = i + 1) 
-                                                        pixelDotData[i] <= OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i];
+                                                         case(OBJArray[OBJRenderIndex][3][5])
+                                                            1'b0 : pixelDotData[i] <= Di_vram[7-i];
+                                                            1'b1 : pixelDotData[i] <= Di_vram[i];
+                                                         endcase
                                                          
                                                       if(OBJArray[OBJRenderIndex][0] - LY < 4'd9)
-                                                            A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
-                                                               else
-                                                            A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
+                                                         case(OBJArray[OBJRenderIndex][3][6])
+                                                            1'b0 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
+                                                            1'b1 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, 3'd7 -  LY[2:0] + OBJArray[OBJRenderIndex][0][2:0], 1'b1};
+                                                         endcase
+                                                      else
+                                                         case(OBJArray[OBJRenderIndex][3][6])
+                                                            1'b0 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
+                                                            1'b1 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2], 3'd7 -  LY[2:0] + OBJArray[OBJRenderIndex][0][2:0], 1'b1};
+                                                         endcase  
                                                       
                                                       renderOBJCount <= renderOBJCount + 1'b1;
                                                    end
@@ -432,9 +449,16 @@ always @(posedge clock) begin
                                                          begin
                                                             OBJRenderIndex <= OBJRenderIndex + 1'b1; 
                                                             if(OBJArray[OBJRenderIndex + 1'b1][0] - LY < 4'd9)
-                                                               A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex + 1'b1][0][2:0], 1'b0};
-                                                                  else
-                                                               A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2], LY[2:0] - OBJArray[OBJRenderIndex + 1'b1][0][2:0], 1'b0};
+                                                               case(OBJArray[OBJRenderIndex + 1'b1][3][6])
+                                                                  1'b0 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex + 1'b1][0][2:0], 1'b0};
+                                                                  1'b1 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2] + 1'b1, 3'd7 - LY[2:0] + OBJArray[OBJRenderIndex + 1'b1][0][2:0], 1'b0};
+                                                               endcase
+                                                            else
+                                                               case(OBJArray[OBJRenderIndex + 1'b1][3][6])
+                                                                  1'b0 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2], LY[2:0] - OBJArray[OBJRenderIndex + 1'b1][0][2:0], 1'b0};
+                                                                  1'b1 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex + 1'b1][2], 3'd7 - LY[2:0] + OBJArray[OBJRenderIndex + 1'b1][0][2:0], 1'b0};
+                                                               endcase
+                                                               
                                                                
                                                          end
                                                          else
