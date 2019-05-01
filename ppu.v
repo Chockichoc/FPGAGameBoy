@@ -25,8 +25,8 @@ module ppu (
    output [7:0] dmaAdress,
    
    output reg [7:0] LY = 8'b0, 
-   output reg [159:0] LinePxlColorArray0,
-   output reg [159:0] LinePxlColorArray1,
+   output [159:0] LinePxlOutput0,
+   output [159:0] LinePxlOutput1,
 
    output reg updateBufferSignal = 1'b0
    
@@ -34,11 +34,14 @@ module ppu (
 );
 
    assign dmaAdress = DMA;
+   assign LinePxlOutput0 = LCDC[0] ? LinePxlColorArray0 : 160'b0;
+   assign LinePxlOutput1 = LCDC[0] ? LinePxlColorArray1 : 160'b0;
 
-   
    reg [159:0] LineBGDotDatas0;
    reg [159:0] LineBGDotDatas1;
    
+   reg [159:0] LinePxlColorArray0;
+   reg [159:0] LinePxlColorArray1;
    
    reg [8:0]  XCount = 9'b0;  
 
