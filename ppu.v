@@ -408,12 +408,13 @@ always @(posedge clock) begin
                                           5'd0 :   renderOBJCount <= renderOBJCount + 1'b1;
                                    
                                           5'd1 :   begin
+                                                      
                                                       for(i = 0; i < 8; i = i + 1) 
                                                          case(OBJArray[OBJRenderIndex][3][5])
                                                             1'b0 : pixelDotData[i] <= Di_vram[7-i];
                                                             1'b1 : pixelDotData[i] <= Di_vram[i];
                                                          endcase
-                                                         
+                                                      
                                                       if(OBJArray[OBJRenderIndex][0] - LY < 4'd9)
                                                          case(OBJArray[OBJRenderIndex][3][6])
                                                             1'b0 : A_vram <= {4'b0000, OBJArray[OBJRenderIndex][2] + 1'b1, LY[2:0] - OBJArray[OBJRenderIndex][0][2:0], 1'b1};
@@ -431,15 +432,28 @@ always @(posedge clock) begin
                                           5'd3 :   begin
                                                       for(i = 0; i < 8; i = i + 1) 
                                                          begin
-                                                         
+
                                                          if({LineBGDotDatas1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LineBGDotDatas0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} == 2'b00  || 
                                                          ({OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i], pixelDotData[i]} != 2'b00 && OBJArray[OBJRenderIndex][3][7] == 1'b0 ) )
                                                             begin
-                                                               case({OBJArray[OBJRenderIndex][3][5] ? Di_vram[i] : Di_vram[7-i], pixelDotData[i]})
-                                                                  2'b00:   ;
-                                                                  2'b01:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[3:2] : OBP0[3:2];
-                                                                  2'b10:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[5:4] : OBP0[5:4];
-                                                                  2'b11:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[7:6] : OBP0[7:6];
+                                                               case(OBJArray[OBJRenderIndex][3][5])
+                                                                  1'b0 :   begin
+                                                                              case({Di_vram[7-i], pixelDotData[i]})
+                                                                                 2'b00:   ;
+                                                                                 2'b01:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[3:2] : OBP0[3:2];
+                                                                                 2'b10:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[5:4] : OBP0[5:4];
+                                                                                 2'b11:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[7:6] : OBP0[7:6];
+                                                                              endcase
+                                                                           end
+                                                                  1'b1 :   begin
+                                                                              case({Di_vram[i], pixelDotData[i]})
+                                                                                 2'b00:   ;
+                                                                                 2'b01:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[3:2] : OBP0[3:2];
+                                                                                 2'b10:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[5:4] : OBP0[5:4];
+                                                                                 2'b11:   {LinePxlColorArray1[OBJArray[OBJRenderIndex][1] + i - 4'd8], LinePxlColorArray0[OBJArray[OBJRenderIndex][1] + i - 4'd8]} <= OBJArray[OBJRenderIndex][3][4] ? OBP1[7:6] : OBP0[7:6];
+                                                                              endcase
+                                                                           end
+                                                               
                                                                endcase
                                                             end
 
