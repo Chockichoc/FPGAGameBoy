@@ -12,7 +12,7 @@ input             cs_mmu,
 output timerIRQ
 );
 
-reg [16:0] DIV = 8'b0;
+reg [15:0] DIV = 8'b0;
 reg [7:0] TIMA = 8'b0;
 reg [7:0] TMA = 8'b0;
 reg [7:0] TAC = 8'b0;
@@ -64,7 +64,7 @@ always @(posedge TimaClk) begin
    
 end
 
-assign timerIRQ = (TIMA == 8'hFF) ? 1'b1 : 1'b0;
+assign timerIRQ = (TIMA == TMA) ? 1'b1 : 1'b0;
 
 
 endmodule
