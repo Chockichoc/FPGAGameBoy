@@ -67,14 +67,16 @@ module cpu(
    reg   [3:0]    currentIRQIndex = 4'b0000; // 0 = VBlank, 1 = LCDC, 2 = Timer, 3 = Transfert, 4 = Controller;
    reg   [7:0]    IF = 8'b00000000;
    reg   [7:0]    IE = 8'b00000000;
-   reg            IME = 1'b0;
+   reg            IME = 1'b1;
    
    //Current Instruction
    reg   [7:0]    CI = 8'b0;
    reg   [2:0]    CurrentMCycle = 3'd0;
    reg   [2:0]    CurrentTCycle = 3'd0;
    reg   [7:0]    CB = 8'b0;
-    
+   
+   reg [8:0] DAA = 9'b0;
+  
    //Halt mode
    reg HALT = 1'b0;
 
@@ -161,7 +163,7 @@ module cpu(
    
    
    always @(posedge pllClk or posedge reset) begin
-
+   
    
    if(reset) begin
    
@@ -179,8 +181,8 @@ module cpu(
       CurrentMCycle <= 3'd0;
       CurrentTCycle <= 3'd0;
       
-      currentIRQIndex = 4'b0000; // 0 = VBlank, 1 = LCDC, 2 = Timer, 3 = Transfert, 4 = Controller;
-      IME = 1'b0;
+      currentIRQIndex <= 4'b0000; // 0 = VBlank, 1 = LCDC, 2 = Timer, 3 = Transfert, 4 = Controller;
+      IME <= 1'b1;
    
    end
    else if(HALT == 1'b0 || ((IF & IE) != 8'b0))  begin 
@@ -1084,7 +1086,7 @@ module cpu(
                                                                   2'b00 : C <= Di_cpu;
                                                                   2'b01 : E <= Di_cpu;
                                                                   2'b10 : L <= Di_cpu;
-                                                                  2'b11 : F <= Di_cpu;
+                                                                  2'b11 : F <= Di_cpu & 8'hF0;
                                                                endcase;
                                                                rd <= 1'b0;
                                                                SP <= SP + 1'b1;
@@ -1138,16 +1140,19 @@ module cpu(
                                                                CurrentMCycle <= CurrentMCycle + 3'd1;       end
                                           endcase
                                  3'd2  :  case (CurrentTCycle)
-                                             3'd0  :  begin    case (Di_cpu[7])
-                                                                  1'b0 :   begin 
-                                                                              F[5] <= (SP[3:0] + Di_cpu[3:0]) < Di_cpu[3:0] ? 1'b1 : 1'b0;
-                                                                              F[4] <= (SP[7:0] + Di_cpu) < Di_cpu ? 1'b1 : 1'b0;
+                                             3'd0  :  begin    case(Di_cpu[7])
+                                                                  1'b0 :   begin
+                                                                              F[4] <= (SP[7:0] > SP[7:0] + Di_cpu) ? 1'b1 : 1'b0;
+                                                                              F[5] <= (SP[3:0] > SP[3:0] + Di_cpu[3:0]) ? 1'b1 : 1'b0;
                                                                            end
                                                                   1'b1 :   begin
-                                                                              F[5] <= SP[3:0] < SP[3:0] - (~Di_cpu[3:0] + 1'b1) ? 1'b1 : 1'b0;
-                                                                              F[4] <= SP[7:0] < SP[7:0] - (~Di_cpu + 1'b1) ? 1'b1 : 1'b0;
+                                                                              F[4] <= ({1'b0, SP[7:0]} - (~Di_cpu + 1'b1)) > 9'b011111111  ? 1'b1 : 1'b0;
+                                                                              F[5] <= ({1'b0, SP[3:0]} - (~Di_cpu[3:0] + 1'b1) > 5'b01111 ) ? 1'b1 : 1'b0;
                                                                            end
-                                                               endcase;
+                                                               endcase
+                                                               
+                                                               F[7] <= 1'b0;
+                                                               F[6] <= 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              2'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
@@ -1231,39 +1236,39 @@ module cpu(
                                     F[6] <= 1'b0;
                               case (CI[2:0])
                                  3'b111 : begin A <= A + A;
-                                                F[7] <= A[7:0] + A[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + A[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + A[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] + A[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] > A[3:0] + A[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] > A[7:0] + A[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b000 : begin A <= A + B;
-                                                F[7] <= A[7:0] + B[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + B[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + B[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] + B[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] > A[3:0] + B[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] > A[7:0] + B[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b001 : begin A <= A + C;
-                                                F[7] <= A[7:0] + C[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + C[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + C[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] + C[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] > A[3:0] + C[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] > A[7:0] + C[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b010 : begin A <= A + D;
-                                                F[7] <= A[7:0] + D[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + D[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + D[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] + D[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] > A[3:0] + D[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] > A[7:0] + D[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b011 : begin A <= A + E;
-                                                F[7] <= A[7:0] + E[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + E[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + E[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] + E[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] > A[3:0] + E[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] > A[7:0] + E[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b100 : begin A <= A + H;
-                                                F[7] <= A[7:0] + H[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + H[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + H[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] + H[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] > A[3:0] + H[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] > A[7:0] + H[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b101 : begin A <= A + L;
-                                                F[7] <= A[7:0] + L[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + L[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + L[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] + L[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] > A[3:0] + L[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] > A[7:0] + L[7:0]) ? 1'b1 : 1'b0;
                                           end
                               endcase
                            end
@@ -1289,10 +1294,10 @@ module cpu(
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd2  :  begin    A <= A + Di_cpu;
-                                                               F[7] <= A[7:0] + Di_cpu == 8'b0 ? 1'b1 : 1'b0;
+                                                               F[7] <= (A[7:0] + Di_cpu == 8'b0) ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b0;
-                                                               F[5] <= A[3:0] > A[3:0] + Di_cpu[3:0] ? 1'b1 : 1'b0;
-                                                               F[4] <= A[7:0] > A[7:0] + Di_cpu[7:0] ? 1'b1 : 1'b0;
+                                                               F[5] <= (A[3:0] > A[3:0] + Di_cpu[3:0]) ? 1'b1 : 1'b0;
+                                                               F[4] <= (A[7:0] > A[7:0] + Di_cpu[7:0]) ? 1'b1 : 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    PC <= PC + 16'd2;
@@ -1324,10 +1329,10 @@ module cpu(
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd2  :  begin    A <= A + Di_cpu;
-                                                               F[7] <= A[7:0] + Di_cpu == 8'b0 ? 1'b1 : 1'b0;
+                                                               F[7] <= (A[7:0] + Di_cpu == 8'b0) ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b0;
-                                                               F[5] <= A[3:0] > A[3:0] + Di_cpu[3:0] ? 1'b1 : 1'b0;
-                                                               F[4] <= A[7:0] > A[7:0] + Di_cpu[7:0] ? 1'b1 : 1'b0;
+                                                               F[5] <= (A[3:0] > A[3:0] + Di_cpu[3:0]) ? 1'b1 : 1'b0;
+                                                               F[4] <= (A[7:0] > A[7:0] + Di_cpu[7:0]) ? 1'b1 : 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    
@@ -1351,39 +1356,39 @@ module cpu(
                                     F[6] <= 1'b0;
                               case (CI[2:0])
                                  3'b111 : begin A <= A + A + F[4];
-                                                F[7] <= A[7:0] + A[7:0] + F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + A[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + A[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A + A + F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (5'b01111 < A[3:0] + A[3:0] + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'b011111111 < A + A + F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b000 : begin A <= A + B + F[4];
-                                                F[7] <= A[7:0] + B[7:0] + F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + B[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + B[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A + B + F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (5'b01111 < A[3:0] + B[3:0] + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'b011111111 < A + B + F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b001 : begin A <= A + C + F[4];
-                                                F[7] <= A[7:0] + C[7:0] + F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + C[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + C[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A + C + F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (5'b01111 < A[3:0] + C[3:0] + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'b011111111 < A + C + F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b010 : begin A <= A + D + F[4];
-                                                F[7] <= A[7:0] + D[7:0] + F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + D[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + D[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A + D + F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (5'b01111 < A[3:0] + D[3:0] + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'b011111111 < A + D + F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b011 : begin A <= A + E + F[4];
-                                                F[7] <= A[7:0] + E[7:0] + F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + E[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + E[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A + E + F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (5'b01111 < A[3:0] + E[3:0] + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'b011111111 < A + E + F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b100 : begin A <= A + H + F[4];
-                                                F[7] <= A[7:0] + H[7:0] + F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + H[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + H[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A + H + F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (5'b01111 < A[3:0] + H[3:0] + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'b011111111 < A + H + F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b101 : begin A <= A + L + F[4];
-                                                F[7] <= A[7:0] + L[7:0] + F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] > A[3:0] + L[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] > A[7:0] + L[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A + L + F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (5'b01111 < A[3:0] + L[3:0] + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'b011111111 < A + L + F[4]) ? 1'b1 : 1'b0;
                                           end
                               endcase
                            end   
@@ -1409,10 +1414,10 @@ module cpu(
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd2  :  begin    A <= A + Di_cpu + F[4];
-                                                               F[7] <= A[7:0] + Di_cpu + F[4] == 8'b0 ? 1'b1 : 1'b0;
+                                                               F[7] <= (A + Di_cpu + F[4] == 8'b0) ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b0;
-                                                               F[5] <= A[3:0] > A[3:0] + Di_cpu[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                               F[4] <= A[7:0] > A[7:0] + Di_cpu[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                               F[5] <= (5'h0F < (A[3:0] + Di_cpu[3:0] + F[4])) ? 1'b1 : 1'b0;
+                                                               F[4] <= (9'h0FF < A + Di_cpu + F[4]) ? 1'b1 : 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    PC <= PC + 16'd2;
@@ -1444,10 +1449,10 @@ module cpu(
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd2  :  begin    A <= A + Di_cpu + F[4];
-                                                               F[7] <= A[7:0] + Di_cpu + F[4] == 8'b0 ? 1'b1 : 1'b0;
+                                                               F[7] <= (A[7:0] + Di_cpu + F[4] == 8'b0) ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b0;
-                                                               F[5] <= A[3:0] > A[3:0] + Di_cpu[3:0] + F[4] ? 1'b1 : 1'b0;
-                                                               F[4] <= A[7:0] > A[7:0] + Di_cpu[7:0] + F[4] ? 1'b1 : 1'b0;
+                                                               F[5] <= (5'h0F < A[3:0] + Di_cpu[3:0] + F[4]) ? 1'b1 : 1'b0;
+                                                               F[4] <= (9'h0FF < A[7:0] + Di_cpu[7:0] + F[4]) ? 1'b1 : 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    
@@ -1474,51 +1479,51 @@ module cpu(
                                  3'b111 : begin case (CI[5:3])
                                                    3'b010 : A <= A - A;
                                                 endcase
-                                                F[7] <= A[7:0] - A[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - A[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - A[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] - A[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] < A[3:0] - A[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] < A[7:0] - A[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b000 : begin case (CI[5:3])
                                                    3'b010 : A <= A - B;
                                                 endcase
-                                                F[7] <= A[7:0] - B[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - B[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - B[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] - B[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] < A[3:0] - B[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] < A[7:0] - B[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b001 : begin case (CI[5:3])
                                                    3'b010 : A <= A - C;
                                                 endcase
-                                                F[7] <= A[7:0] - C[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - C[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - C[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] - C[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] < A[3:0] - C[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] < A[7:0] - C[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b010 : begin case (CI[5:3])
                                                    3'b010 : A <= A - D;
                                                 endcase
-                                                F[7] <= A[7:0] - D[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - D[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - D[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] - D[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] < A[3:0] - D[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] < A[7:0] - D[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b011 : begin case (CI[5:3])
                                                    3'b010 : A <= A - E;
                                                 endcase
-                                                F[7] <= A[7:0] - E[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - E[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - E[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] - E[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] < A[3:0] - E[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] < A[7:0] - E[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b100 : begin case (CI[5:3])
                                                    3'b010 : A <= A - H;
                                                 endcase
-                                                F[7] <= A[7:0] - H[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - H[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - H[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] - H[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] < A[3:0] - H[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] < A[7:0] - H[7:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b101 : begin case (CI[5:3])
                                                    3'b010 : A <= A - L;
                                                 endcase
-                                                F[7] <= A[7:0] - L[7:0] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - L[3:0] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - L[7:0] ? 1'b1 : 1'b0;
+                                                F[7] <= (A[7:0] - L[7:0] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] < A[3:0] - L[3:0]) ? 1'b1 : 1'b0;
+                                                F[4] <= (A[7:0] < A[7:0] - L[7:0]) ? 1'b1 : 1'b0;
                                           end
                               endcase
                            end
@@ -1544,10 +1549,10 @@ module cpu(
                                              3'd2  :  begin    case (CI[5:3])
                                                                   3'b010 : A <= A - Di_cpu;
                                                                endcase
-                                                               F[7] <= A[7:0] - Di_cpu == 8'b0 ? 1'b1 : 1'b0;
+                                                               F[7] <= (A[7:0] - Di_cpu == 8'b0) ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b1;
-                                                               F[5] <= A[3:0] < A[3:0] - Di_cpu[3:0] ? 1'b1 : 1'b0;
-                                                               F[4] <= A[7:0] < A[7:0] - Di_cpu[7:0] ? 1'b1 : 1'b0;
+                                                               F[5] <= (A[3:0] < A[3:0] - Di_cpu[3:0]) ? 1'b1 : 1'b0;
+                                                               F[4] <= (A[7:0] < A[7:0] - Di_cpu[7:0]) ? 1'b1 : 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    PC <= PC + 16'd2;
@@ -1581,10 +1586,10 @@ module cpu(
                                              3'd2  :  begin    case (CI[5:3])
                                                                   3'b010 : A <= A - Di_cpu;
                                                                endcase
-                                                               F[7] <= A[7:0] - Di_cpu == 8'b0 ? 1'b1 : 1'b0;
+                                                               F[7] <= (A[7:0] - Di_cpu == 8'b0) ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b1;
-                                                               F[5] <= A[3:0] < A[3:0] - Di_cpu[3:0] ? 1'b1 : 1'b0;
-                                                               F[4] <= A[7:0] < A[7:0] - Di_cpu[7:0] ? 1'b1 : 1'b0;
+                                                               F[5] <= (A[3:0] < A[3:0] - Di_cpu[3:0]) ? 1'b1 : 1'b0;
+                                                               F[4] <= (A[7:0] < A[7:0] - Di_cpu[7:0]) ? 1'b1 : 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    
@@ -1608,39 +1613,39 @@ module cpu(
                                     F[6] <= 1'b1;
                               case (CI[2:0])
                                  3'b111 : begin A <= A - A - F[4];
-                                                F[7] <= A[7:0] - A[7:0] - F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - A[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - A[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A - A - F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= ((A & 8'h0F) < (A & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'h0FF < A - A - F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b000 : begin A <= A - B - F[4];
-                                                F[7] <= A[7:0] - B[7:0] - F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - B[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - B[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A - B - F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= ((A & 8'h0F) < (B & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'h0FF < A - B - F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b001 : begin A <= A - C - F[4];
-                                                F[7] <= A[7:0] - C[7:0] - F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - C[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - C[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A - C - F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= ((A & 8'h0F) < (C & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'h0FF < A - C - F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b010 : begin A <= A - D - F[4];
-                                                F[7] <= A[7:0] - D[7:0] - F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - D[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - D[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A - D - F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= ((A & 8'h0F) < (D & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'h0FF < A - D - F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b011 : begin A <= A - E - F[4];
-                                                F[7] <= A[7:0] - E[7:0] - F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - E[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - E[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A - E - F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= ((A & 8'h0F) < (E & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'h0FF < A - E - F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b100 : begin A <= A - H - F[4];
-                                                F[7] <= A[7:0] - H[7:0] - F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - H[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - H[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A - H - F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= ((A & 8'h0F) < (H & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'h0FF < A - H - F[4]) ? 1'b1 : 1'b0;
                                           end
                                  3'b101 : begin A <= A - L - F[4];
-                                                F[7] <= A[7:0] - L[7:0] - F[4] == 8'b0 ? 1'b1 : 1'b0;
-                                                F[5] <= A[3:0] < A[3:0] - L[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                F[4] <= A[7:0] < A[7:0] - L[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                F[7] <= (A - L - F[4] == 8'b0) ? 1'b1 : 1'b0;
+                                                F[5] <= ((A & 8'h0F) < (L & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                F[4] <= (9'h0FF < A - L - F[4]) ? 1'b1 : 1'b0;
                                           end
                               endcase
                            end
@@ -1664,10 +1669,10 @@ module cpu(
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd2  :  begin    A <= A - Di_cpu - F[4];
-                                                               F[7] <= A[7:0] - Di_cpu - F[4] == 8'b0 ? 1'b1 : 1'b0;
+                                                               F[7] <= (A[7:0] - Di_cpu - F[4] == 8'b0) ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b1;
-                                                               F[5] <= A[3:0] < A[3:0] - Di_cpu[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                               F[4] <= A[7:0] < A[7:0] - Di_cpu[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                               F[5] <= ((A & 8'h0F) < (Di_cpu & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                               F[4] <= (9'h0FF < A - Di_cpu - F[4]) ? 1'b1 : 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    PC <= PC + 16'd2;
@@ -1699,10 +1704,10 @@ module cpu(
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd2  :  begin    A <= A - Di_cpu - F[4];
-                                                               F[7] <= A[7:0] - Di_cpu - F[4] == 8'b0 ? 1'b1 : 1'b0;
+                                                               F[7] <= (A - Di_cpu - F[4] == 8'b0) ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b1;
-                                                               F[5] <= A[3:0] < A[3:0] - Di_cpu[3:0] - F[4] ? 1'b1 : 1'b0;
-                                                               F[4] <= A[7:0] < A[7:0] - Di_cpu[7:0] - F[4] ? 1'b1 : 1'b0;
+                                                               F[5] <= ((A & 8'h0F) < (Di_cpu & 8'h0F) + F[4]) ? 1'b1 : 1'b0;
+                                                               F[4] <= (9'h0FF < A - Di_cpu - F[4]) ? 1'b1 : 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    
@@ -1804,17 +1809,17 @@ module cpu(
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd2  :  begin    case (CI[5:3])
-                                                                  3'b100 : A = A & Di_cpu;
-                                                                  3'b110 : A = A | Di_cpu;
-                                                                  3'b101 : A = A ^ Di_cpu;
+                                                                  3'b100 : A <= A & Di_cpu;
+                                                                  3'b110 : A <= A | Di_cpu;
+                                                                  3'b101 : A <= A ^ Di_cpu;
                                                                endcase
-                                                               F[7] = A == 8'b0 ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b0;
                                                                F[5] <= CI[5:3] == 3'b100 ? 1'b1 : 1'b0;
                                                                F[4] <= 1'b0;
                                                                rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    CurrentTCycle <= 3'd0;
+																					F[7] <= A == 8'b0 ? 1'b1 : 1'b0;
                                                                CurrentMCycle <= 3'd0;                       end
                                           endcase
                               endcase
@@ -1837,37 +1842,37 @@ module cpu(
                                  3'b111:  begin    A <= A + 1'b1;
                                                 F[7] <= A + 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b0;
-                                                F[5] <= A[3:0] + 1'b1 < A[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] + 1'b1 < A[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b000:  begin    B <= B + 1'b1;
                                                 F[7] <= B + 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b0;
-                                                F[5] <= B[3:0] + 1'b1 < B[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (B[3:0] + 1'b1 < B[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b001:  begin    C <= C + 1'b1;
                                                 F[7] <= C + 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b0;
-                                                F[5] <= C[3:0] + 1'b1 < C[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (C[3:0] + 1'b1 < C[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b010:  begin    D <= D + 1'b1;
                                                 F[7] <= D + 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b0;
-                                                F[5] <= D[3:0] + 1'b1 < D[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (D[3:0] + 1'b1 < D[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b011:  begin    E <= E + 1'b1;
                                                 F[7] <= E + 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b0;
-                                                F[5] <= E[3:0] + 1'b1 < E[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (E[3:0] + 1'b1 < E[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b100:  begin    H <= H + 1'b1;
                                                 F[7] <= H + 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b0;
-                                                F[5] <= H[3:0] + 1'b1 < H[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (H[3:0] + 1'b1 < H[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b101:  begin    L <= L + 1'b1;
                                                 F[7] <= L + 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b0;
-                                                F[5] <= L[3:0] + 1'b1 < L[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (L[3:0] + 1'b1 < L[3:0]) ? 1'b1 : 1'b0;
                                           end
                               endcase;   
                            end   
@@ -1894,7 +1899,7 @@ module cpu(
                                                                Do_cpu <= Di_cpu + 1'b1;
                                                                F[7] <= Di_cpu + 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b0;
-                                                               F[5] <= Di_cpu[3:0] + 1'b1 < Di_cpu[3:0] ? 1'b1 : 1'b0;
+                                                               F[5] <= (Di_cpu[3:0] + 1'b1 < Di_cpu[3:0]) ? 1'b1 : 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    wr <= 1'b1;
                                                                CurrentTCycle <= 3'd0;
@@ -1928,37 +1933,37 @@ module cpu(
                                  3'b111:  begin    A <= A - 1'b1;
                                                 F[7] <= A - 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b1;
-                                                F[5] <= A[3:0] - 1'b1 > A[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (A[3:0] - 1'b1 > A[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b000:  begin    B <= B - 1'b1;
                                                 F[7] <= B - 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b1;
-                                                F[5] <= B[3:0] - 1'b1 > B[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (B[3:0] - 1'b1 > B[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b001:  begin    C <= C - 1'b1;
                                                 F[7] <= C - 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b1;
-                                                F[5] <= C[3:0] - 1'b1 > C[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (C[3:0] - 1'b1 > C[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b010:  begin    D <= D - 1'b1;
                                                 F[7] <= D - 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b1;
-                                                F[5] <= D[3:0] - 1'b1 > D[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (D[3:0] - 1'b1 > D[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b011:  begin    E <= E - 1'b1;
                                                 F[7] <= E - 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b1;
-                                                F[5] <= E[3:0] - 1'b1 > E[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (E[3:0] - 1'b1 > E[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b100:  begin    H <= H - 1'b1;
                                                 F[7] <= H - 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b1;
-                                                F[5] <= H[3:0] - 1'b1 > H[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (H[3:0] - 1'b1 > H[3:0]) ? 1'b1 : 1'b0;
                                           end
                                  3'b101:  begin    L <= L - 1'b1;
                                                 F[7] <= L - 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                 F[6] <= 1'b1;
-                                                F[5] <= L[3:0] - 1'b1 > L[3:0] ? 1'b1 : 1'b0;
+                                                F[5] <= (L[3:0] - 1'b1 > L[3:0]) ? 1'b1 : 1'b0;
                                           end
                               endcase;   
                            end   
@@ -1985,7 +1990,7 @@ module cpu(
                                                                Do_cpu <= Di_cpu - 1'b1;
                                                                F[7] <= Di_cpu - 1'b1 == 8'b0 ? 1'b1 : 1'b0;
                                                                F[6] <= 1'b1;
-                                                               F[5] <= Di_cpu[3:0] - 1'b1 > Di_cpu[3:0] ? 1'b1 : 1'b0;
+                                                               F[5] <= (Di_cpu[3:0] - 1'b1 > Di_cpu[3:0]) ? 1'b1 : 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    wr <= 1'b1;
                                                                CurrentTCycle <= 3'd0;
@@ -2006,7 +2011,8 @@ module cpu(
             //////////////      
             //ADD HL, ss//
             //////////////
-            
+                                                
+                                                
             8'b00001001, 8'b00011001, 8'b00101001, 8'b00111001 : 
                         begin
                               case(CurrentMCycle)
@@ -2020,20 +2026,20 @@ module cpu(
                                              3'd0  :  begin    case (CI[5:4])
                                                                   2'b00 :  begin    {H, L} <= {H, L} + {B, C}; 
                                                                                     F[6] <= 1'b0; 
-                                                                                    F[5] <= {H[3:0], L} + {B[3:0], C} > {H[3:0], L} ? 1'b0 : 1'b1;
-                                                                                    F[4] <= {H, L} + {B, C} > {H, L} ? 1'b0 : 1'b1; end
+                                                                                    F[5] <= {H[3:0], L} + {B[3:0], C} > 16'h0FFF ? 1'b1 : 1'b0;
+                                                                                    F[4] <= 17'h0FFFF < {H, L} + {B, C}  ? 1'b1 : 1'b0; end
                                                                   2'b01 :  begin    {H, L} <= {H, L} + {D, E}; 
                                                                                     F[6] <= 1'b0; 
-                                                                                    F[5] <= {H[3:0], L} + {D[3:0], E} > {H[3:0], L} ? 1'b0 : 1'b1;
-                                                                                    F[4] <= {H, L} + {D, E} > {H, L} ? 1'b0 : 1'b1; end
+                                                                                    F[5] <= {H[3:0], L} + {D[3:0], E} > 16'h0FFF ? 1'b1 : 1'b0;
+                                                                                    F[4] <= 17'h0FFFF < {H, L} + {D, E} ? 1'b1 : 1'b0; end
                                                                   2'b10 :  begin    {H, L} <= {H, L} + {H, L}; 
                                                                                     F[6] <= 1'b0; 
-                                                                                    F[5] <= {H[3:0], L} + {H[3:0], L} > {H[3:0], L} ? 1'b0 : 1'b1;
-                                                                                    F[4] <= {H, L} + {H, L} > {H, L} ? 1'b0 : 1'b1; end
+                                                                                    F[5] <= {H[3:0], L} + {H[3:0], L} > 16'h0FFF ? 1'b1 : 1'b0;
+                                                                                    F[4] <= 17'h0FFFF < {H, L} + {H, L} ? 1'b1 : 1'b0; end
                                                                   2'b11 :  begin    {H, L} <= {H, L} + SP; 
                                                                                     F[6] <= 1'b0; 
-                                                                                    F[5] <= {H[3:0], L} + SP[11:0] > {H[3:0], L} ? 1'b0 : 1'b1;
-                                                                                    F[4] <= {H, L} + SP > {H, L} ? 1'b0 : 1'b1;  end
+                                                                                    F[5] <= {H[3:0], L} + SP[11:0] > 16'h0FFF ? 1'b1 : 1'b0;
+                                                                                    F[4] <= 17'h0FFFF < {H, L} + SP ? 1'b1 : 1'b0;  end
                                                                endcase;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
@@ -2062,22 +2068,24 @@ module cpu(
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd2  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              3'd3  :  begin    SP <= SP + $signed(Di_cpu);
-                                                               case (Di_cpu[7])
-                                                                  1'b0 :   begin 
-                                                                              F[5] <= (SP[3:0] + Di_cpu[3:0]) < SP[3:0] ? 1'b1 : 1'b0;
-                                                                              F[4] <= (SP[7:0] + Di_cpu) < SP[7:0] ? 1'b1 : 1'b0;
+                                                               case(Di_cpu[7])
+                                                                  1'b0 :   begin
+                                                                              F[4] <= (SP[7:0] > SP[7:0] + Di_cpu) ? 1'b1 : 1'b0;
+                                                                              F[5] <= (SP[3:0] > SP[3:0] + Di_cpu[3:0]) ? 1'b1 : 1'b0;
                                                                            end
                                                                   1'b1 :   begin
-                                                                              F[5] <= SP[3:0] < SP[3:0] - (~Di_cpu[3:0] + 1'b1) ? 1'b1 : 1'b0;
-                                                                              F[4] <= SP[7:0] < SP[7:0] - (~Di_cpu + 1'b1) ? 1'b1 : 1'b0;
+                                                                              F[4] <= ({1'b0, SP[7:0]} - (~Di_cpu + 1'b1)) > 9'b011111111  ? 1'b1 : 1'b0;
+                                                                              F[5] <= ({1'b0, SP[3:0]} - (~Di_cpu[3:0] + 1'b1) > 5'b01111 ) ? 1'b1 : 1'b0;
                                                                            end
-                                                               endcase;
+                                                               endcase
+                                                               
                                                                F[7] <= 1'b0;
-                                                               F[6] <= 1'b0;
+                                                               F[6] <=  1'b0;
                                                                CurrentTCycle <= 3'd0;
                                                                CurrentMCycle <= CurrentMCycle + 3'd1;       end
                                           endcase
                                  3'd2  :  case (CurrentTCycle)
+
                                              3'd0  :  begin    rd <= 1'b0;
                                                                CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                              2'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
@@ -2760,7 +2768,7 @@ module cpu(
                                                                   case(CB[2:0])
                                                                      3'b000 : begin    F[7] <= {B[3:0], B[7:4]} == 0 ? 1'b1 : 1'b0;
                                                                                        B <= {B[3:0], B[7:4]}; end
-                                                                     3'b001 : begin    F[7] <= {C[7:1], C[7:1]} == 0 ? 1'b1 : 1'b0;
+                                                                     3'b001 : begin    F[7] <= {C[3:0], C[7:1]} == 0 ? 1'b1 : 1'b0;
                                                                                        C <= {C[3:0], C[7:4]}; end
                                                                      3'b010 : begin    F[7] <= {D[3:0], D[7:4]} == 0 ? 1'b1 : 1'b0;
                                                                                        D <= {D[3:0], D[7:4]}; end
@@ -3291,10 +3299,10 @@ module cpu(
                                                    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                  3'd1  :  begin    CurrentTCycle <= CurrentTCycle + 3'd1;       end
                                  3'd2  :  begin    case(CI[4:3])
-                                                      2'b00 :  if(F[7] == 0) PC <= PC + $signed(Di_cpu) + 2'd2; else PC <= PC + 3'd2;
-                                                      2'b01 :  if(F[7] == 1) PC <= PC + $signed(Di_cpu) + 2'd2; else PC <= PC + 3'd2;
-                                                      2'b10 :  if(F[4] == 0) PC <= PC + $signed(Di_cpu) + 2'd2; else PC <= PC + 3'd2;
-                                                      2'b11 :  if(F[4] == 1) PC <= PC + $signed(Di_cpu) + 2'd2; else PC <= PC + 3'd2;
+                                                      2'b00 :  if(F[7] == 0) PC <= PC + $signed(Di_cpu) + 2'd2; else PC <= PC + 2'd2;
+                                                      2'b01 :  if(F[7] == 1) PC <= PC + $signed(Di_cpu) + 2'd2; else PC <= PC + 2'd2;
+                                                      2'b10 :  if(F[4] == 0) PC <= PC + $signed(Di_cpu) + 2'd2; else PC <= PC + 2'd2;
+                                                      2'b11 :  if(F[4] == 1) PC <= PC + $signed(Di_cpu) + 2'd2; else PC <= PC + 2'd2;
                                                    endcase
                                                    rd <= 1'b0;
                                                    CurrentTCycle <= CurrentTCycle + 3'd1;       end
@@ -3656,7 +3664,7 @@ module cpu(
                end 
                
             ///////      
-            //DDA//
+            //DAA//
             ///////
            
             8'b00100111 :
@@ -3664,55 +3672,38 @@ module cpu(
                begin
                   case(CurrentMCycle)
                      3'd0  :  case (CurrentTCycle)
-                                 3'd3  :  begin    PC <= PC + 1'b1;
-                                                   CurrentTCycle <= 3'd0;
-                                                   CurrentMCycle <= 3'd0;
-                                                   case(F[6])
-                                                      1'b0:
-                                                              if(F[4] == 1'b0 && A[7:4] <= 4'h9 && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
-                                                            A <= A + 8'h00;
-                                                            F[4] <= 1'b0; end
-                                                         else if(F[4] == 1'b0 && A[7:4] <= 4'h8 && F[5] == 1'b0 && A[3:0] >= 4'hA) begin
-                                                            A <= A + 8'h06;
-                                                            F[4] <= 1'b0; end
-                                                         else if(F[4] == 1'b0 && A[7:4] <= 4'h9 && F[5] == 1'b1 && A[3:0] <= 4'h3) begin
-                                                            A <= A + 8'h06;
-                                                            F[4] <= 1'b0; end
-                                                         else if(F[4] == 1'b0 && A[7:4] >= 4'hA && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
-                                                            A <= A + 8'h60;
-                                                            F[4] <= 1'b1; end
-                                                         else if(F[4] == 1'b0 && A[7:4] >= 4'h9 && F[5] == 1'b0 && A[3:0] >= 4'hA) begin
-                                                            A <= A + 8'h66;
-                                                            F[4] <= 1'b1; end
-                                                         else if(F[4] == 1'b0 && A[7:4] >= 4'hA && F[5] == 1'b1 && A[3:0] <= 4'h3) begin
-                                                            A <= A + 8'h66;
-                                                            F[4] <= 1'b1; end
-                                                         else if(F[4] == 1'b1 && A[7:4] <= 4'h2 && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
-                                                            A <= A + 8'h60;
-                                                            F[4] <= 1'b1; end
-                                                         else if(F[4] == 1'b1 && A[7:4] <= 4'h2 && F[5] == 1'b0 && A[3:0] >= 4'hA) begin
-                                                            A <= A + 8'h66;
-                                                            F[4] <= 1'b1; end
-                                                         else if(F[4] == 1'b1 && A[7:4] <= 4'h3 && F[5] == 1'b1 && A[3:0] <= 4'h3) begin
-                                                            A <= A + 8'h66;
-                                                            F[4] <= 1'b1; end
+                                 3'd3  :  begin    
+                                             PC <= PC + 1'b1;
+                                             CurrentTCycle <= 3'd0;
+                                             CurrentMCycle <= 3'd0;
+                                             
+                                             DAA = {1'b0, A};
+															
+                                             case(F[6])
+                                                1'b1 :   begin
+                                                            if(F[5] == 1'b1)
+                                                                  DAA[7:0] = DAA[7:0] - 4'h6;
+                                                                  
+                                                            if(F[4] == 1'b1)
+                                                                  DAA = DAA - 8'h60;
+                                                         end
+                                                         
+                                                1'b0 :   begin
+                                                            if((F[5] == 1'b1) || (DAA[3:0] > 4'h9))
+                                                                  DAA = DAA + 4'h6;
+                                                                  
+                                                            if((F[4] == 1'b1) || (DAA > 8'h9F))
+                                                                  DAA = DAA + 8'h60;
+                                                         end
 
+                                             endcase
+                                             
+                                             A = DAA[7:0];
+                                             F[7] = (A == 8'h0) ? 1'b1 : 1'b0;
+                                             F[4] = F[4] || DAA[8];
+                                             F[5] <= 1'b0;
+                                             
 
-                                                      1'b1:
-                                                              if(F[4] == 1'b0 && A[7:4] <= 4'h9 && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
-                                                            A <= A + 8'h00;
-                                                            F[4] <= 1'b0; end
-                                                         else if(F[4] == 1'b0 && A[7:4] <= 4'h8 && F[5] == 1'b1 && A[3:0] >= 4'h6) begin
-                                                            A <= A + 8'hFA;
-                                                            F[4] <= 1'b0; end
-                                                         else if(F[4] == 1'b1 && A[7:4] >= 4'h7 && F[5] == 1'b0 && A[3:0] <= 4'h9) begin
-                                                            A <= A + 8'hA0;
-                                                            F[4] <= 1'b1; end
-                                                         else if(F[4] == 1'b1 && A[7:4] >= 4'h6 && F[5] == 1'b1 && A[3:0] >= 4'h6) begin
-                                                            A <= A + 8'h9A;
-                                                            F[4] <= 1'b1; end
-                                                   endcase
-                                                   
                                                    
                                           end
                               endcase     
