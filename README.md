@@ -1,8 +1,10 @@
 # FPGAGameBoy
 an implementation of the GameBoy in Verilog
 
-[![demo](https://i.imgur.com/TRDNHrV.png)](https://i.imgur.com/IhCdJPn.mp4)  
-🡑 click to play video
+[![demo](https://i.imgur.com/TRDNHrV.png)](https://i.imgur.com/IhCdJPn.mp4)
+[![demo](https://i.imgur.com/pdjicua.jpg)](https://i.imgur.com/ncSWflj.mp4)
+
+⬆ click to play video ⬆ 
 
 ## Table of Contents
 
